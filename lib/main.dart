@@ -1,28 +1,16 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'loging/screens/list/accommodation_list_screen.dart';
-import 'loging/theme/app_theme.dart';
-import 'providers/accommodation_providers.dart';
+import 'package:second_trip_project/screen/ChangePasswordScreen.dart';
+import 'package:second_trip_project/screen/InquiryScreen.dart';
+import 'package:second_trip_project/screen/MyPageScreen.dart';
+import 'package:second_trip_project/screen/EditProfileScreen.dart';
+import 'package:second_trip_project/screen/MyPostsScreen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+import 'basic2-miniproject/MainScreen.dart';
+import 'basic2-miniproject/SplashScreen.dart';
 
-  // .env 파일 로드 (API 키 가져오기)
-  await dotenv.load(fileName: '.env');
-
-  // SharedPreferences 초기화 (찜 목록 저장용)
-  final prefs = await SharedPreferences.getInstance();
-
-  runApp(
-    ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
-      child: const MyApp(),
-    ),
-  );
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -31,10 +19,48 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '숙소 찾기',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const AccommodationListScreen(), // 임시로 숙소 목록 화면 연결
-    );
+
+        title: 'Travel-Hub Test',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF004680)),
+          useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        ),
+        // 1. 일단 마이페이지가 바로 뜨도록 설정
+        home: const MyPageScreen(),
+
+        // 2. 경로 등록 (이걸 해둬야 톱니바퀴 눌렀을 때 이동이 돼!)
+        routes: {
+          '/mypage': (context) => const MyPageScreen(),
+          '/edit_profile': (context) => const EditProfileScreen(),
+          '/change_password': (context) => const ChangePasswordScreen(),
+          '/my_posts': (context) => const MyPostsScreen(),
+          '/inquiry': (context) => const InquiryScreen(),
+          // 2. 성규님 작업 (깔끔하게 정리)
+          '/': (context) => const SplashScreen(), // 스플래시 화면
+          '/main': (context) => const MainScreen(), // 메인 화면
+
+          // --- 메인 화면 버튼 라우트 ---
+          '/login': (context) =>
+          const Scaffold(body: Center(child: Text('로그인 화면'))),
+          '/signup': (context) =>
+          const Scaffold(body: Center(child: Text('회원가입 화면'))),
+
+          // --- 연습용 및 숙소 카테고리 라우트 ---
+          '/publicDataTest': (context) =>
+          const Scaffold(body: Center(child: Text('공공데이터 테스트'))),
+          '/mapBasic1': (context) =>
+          const Scaffold(body: Center(child: Text('지도 서비스 테스트'))),
+          '/dbTest2': (context) =>
+          const Scaffold(body: Center(child: Text('DB ORM 테스트'))),
+          '/todosMain': (context) =>
+          const Scaffold(body: Center(child: Text('스프링 연결 연습'))),
+          '/hotel': (context) =>
+          const Scaffold(body: Center(child: Text('호텔·리조트 화면'))),
+          '/motel': (context) =>
+          const Scaffold(body: Center(child: Text('모텔 화면'))),
+        }, // routes 맵 닫기
+    ); // <- 여기에 소괄호 ')'를 넣어서 MaterialApp 위젯을 닫아주세요!
   }
 }
