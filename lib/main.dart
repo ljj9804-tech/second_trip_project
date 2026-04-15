@@ -14,24 +14,30 @@ import 'package:second_trip_project/screen/MyPostsScreen.dart';
 import 'package:second_trip_project/screen/RoutingScreen.dart';
 
 import 'car/controller/calendar_controller.dart';
+import 'basic2-miniproject/MainScreen.dart';
+import 'basic2-miniproject/SplashScreen.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
-  // runApp(const MyApp());
-  runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(
-            create: (_) => RentCompController(),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => CalendarController(),
-          ),
-        ],
-        child: const RoutingScreen(),
-      )
-  );
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   await dotenv.load(fileName: '.env');
+//   // runApp(const MyApp());
+//   runApp(
+//       MultiProvider(
+//         providers: [
+//           ChangeNotifierProvider(
+//             create: (_) => RentCompController(),
+//           ),
+//           ChangeNotifierProvider(
+//             create: (_) => CalendarController(),
+//           ),
+//         ],
+//         child: const RoutingScreen(),
+//       )
+//   );
+// }
+
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
