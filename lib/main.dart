@@ -55,9 +55,12 @@ class MyApp extends StatelessWidget {
           scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         ),
         // 1. 일단 마이페이지가 바로 뜨도록 설정
-        home: const MyPageScreen(),
+        //home: const MyPageScreen(),
 
-        // 2. 경로 등록 (이걸 해둬야 톱니바퀴 눌렀을 때 이동이 돼!)
+      // 2. 대신 아래의 initialRoute가 앱의 진짜 시작점 역할을 하게 됩니다.
+        initialRoute: '/',
+
+        // 3. 경로 등록 (이걸 해둬야 톱니바퀴 눌렀을 때 이동이 돼!)
         routes: {
           '/mypage': (context) => const MyPageScreen(),
           '/edit_profile': (context) => const EditProfileScreen(),
