@@ -45,7 +45,6 @@ Future<void> main() async {
           ChangeNotifierProvider<ReservationController>(
               create: (_) => ReservationController()),
         ],
-
         // RoutingScreen에서 라우트 관리
         child: const RoutingScreen(),
       ),
