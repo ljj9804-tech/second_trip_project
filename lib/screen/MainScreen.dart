@@ -215,12 +215,20 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildBottomNav(BuildContext context) {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: const Color(0xFFE61919),
+      selectedItemColor: const Color(0xFFF7323F),
       unselectedItemColor: Colors.grey,
       currentIndex: 0,
       onTap: (index) {
         if (index == 4) {
-          Navigator.pushNamed(context, '/mypage');
+          bool isLoggedIn = false;
+
+          if (isLoggedIn) {
+            // 로그인 상태면 원래 마이페이지로
+            Navigator.pushNamed(context, '/mypage');
+          } else {
+            // 로그아웃 상태면 누나가 만든 '여기어때 레드' 버튼 화면으로!
+            Navigator.pushNamed(context, '/logout_mypage');
+          }
         }
       },
       items: const [

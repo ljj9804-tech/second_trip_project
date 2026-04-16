@@ -21,6 +21,7 @@ import 'MyPageScreen.dart';
 import 'MyPostsScreen.dart';
 import 'SignUpScreen.dart';
 import 'SplashScreen.dart';
+import 'LogoutMyPageScreen.dart';
 
 class RoutingScreen extends StatelessWidget {
   const RoutingScreen({super.key});
@@ -42,7 +43,8 @@ class RoutingScreen extends StatelessWidget {
         '/main': (context) => const MainScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
-        '/mypage': (context) => const MyPageScreen(),
+        '/logout_mypage': (context) => const LogoutMyPageScreen(),
+        '/mypage': (context) => const MyPageScreen(userName: '', userEmail: '',),
         '/edit_profile': (context) => const EditProfileScreen(name: '', phone: ''),
         '/change_password': (context) => const ChangePasswordScreen(),
         '/my_posts': (context) => const MyPostsScreen(),
