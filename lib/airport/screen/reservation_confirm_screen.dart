@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ [추가]
 import '../constants/airport_constants.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/widget/app_base_layout.dart';
@@ -8,8 +9,8 @@ import '../controller/reservation_controller.dart';
 import '../model/reservation_item.dart';
 import '../utils/format_utils.dart';
 
-class ReservationConfirmScreen extends StatelessWidget {
-  // ✅ [변경 후] 예약 데이터 직접 받기
+// ✅ [변경 전] StatelessWidget → [변경 후] StatefulWidget
+class ReservationConfirmScreen extends StatefulWidget {
   final ReservationItem reservation;
 
   const ReservationConfirmScreen({
@@ -18,16 +19,36 @@ class ReservationConfirmScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // ✅ [변경 전] controller.items.last 로 가져옴
-    // final controller = context.watch<ReservationController>();
-    // if (controller.items.isEmpty) { ... }
-    // final reservation = controller.items.last;
-    // ✅ [변경 후] 생성자로 받은 reservation 바로 사용
+  State<ReservationConfirmScreen> createState() =>
+      _ReservationConfirmScreenState();
+}
 
+class _ReservationConfirmScreenState extends State<ReservationConfirmScreen> {
+
+  // ✅ [추가] 이메일/전화번호
+  String _email = '-';
+  String _phone = '-';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  // ✅ [추가] SharedPreferences 에서 가져오기
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _email = prefs.getString('userEmail') ?? '-';
+      _phone = prefs.getString('userPhone') ?? '-';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     debugPrint('[ReservationConfirmScreen] 예약 확인 → '
-        '탑승객: ${reservation.passengerName} / '
-        '총금액: ${reservation.totalPrice}');
+        '탑승객: ${widget.reservation.passengerName} / '
+        '총금액: ${widget.reservation.totalPrice}');
 
     return AppBaseLayout(
       title: '예약내역 최종확인',
@@ -59,12 +80,12 @@ class ReservationConfirmScreen extends StatelessWidget {
               title: '예약 정보',
               child: Column(
                 children: [
-                  _infoRow('예약자 이름', reservation.passengerName),
+                  _infoRow('예약자 이름', widget.reservation.passengerName),
                   const SizedBox(height: 8),
-                  // ✅ [추후 로그인 연동] 이메일/전화번호 자동 입력
-                  _infoRow('이메일', '-'),
+                  // ✅ [변경 전] '-' → [변경 후] SharedPreferences 에서 가져오기
+                  _infoRow('이메일', _email),
                   const SizedBox(height: 8),
-                  _infoRow('휴대폰 번호', '-'),
+                  _infoRow('휴대폰 번호', _phone),
                 ],
               ),
             ),
@@ -77,31 +98,29 @@ class ReservationConfirmScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 가는편
                   _travelRow(
                     label: '가는편',
-                    date: FormatUtils.date(reservation.depPlandTime),
-                    depTime: FormatUtils.time(reservation.depPlandTime),
-                    arrTime: FormatUtils.time(reservation.arrPlandTime),
-                    depAirport: reservation.depAirportNm ?? '-',
-                    arrAirport: reservation.arrAirportNm ?? '-',
-                    airline: '${reservation.airlineNm ?? '-'} '
-                        '${reservation.flightNo ?? '-'}',
+                    date: FormatUtils.date(widget.reservation.depPlandTime),
+                    depTime: FormatUtils.time(widget.reservation.depPlandTime),
+                    arrTime: FormatUtils.time(widget.reservation.arrPlandTime),
+                    depAirport: widget.reservation.depAirportNm ?? '-',
+                    arrAirport: widget.reservation.arrAirportNm ?? '-',
+                    airline: '${widget.reservation.airlineNm ?? '-'} '
+                        '${widget.reservation.flightNo ?? '-'}',
                   ),
 
-                  // 오는편 (왕복일 때)
-                  if (reservation.isRoundTrip &&
-                      reservation.retDepPlandTime != null) ...[
+                  if (widget.reservation.isRoundTrip &&
+                      widget.reservation.retDepPlandTime != null) ...[
                     const Divider(height: 20),
                     _travelRow(
                       label: '오는편',
-                      date: FormatUtils.date(reservation.retDepPlandTime),
-                      depTime: FormatUtils.time(reservation.retDepPlandTime),
-                      arrTime: FormatUtils.time(reservation.retArrPlandTime),
-                      depAirport: reservation.arrAirportNm ?? '-',
-                      arrAirport: reservation.depAirportNm ?? '-',
-                      airline: '${reservation.retAirlineNm ?? '-'} '
-                          '${reservation.retFlightNo ?? '-'}',
+                      date: FormatUtils.date(widget.reservation.retDepPlandTime),
+                      depTime: FormatUtils.time(widget.reservation.retDepPlandTime),
+                      arrTime: FormatUtils.time(widget.reservation.retArrPlandTime),
+                      depAirport: widget.reservation.arrAirportNm ?? '-',
+                      arrAirport: widget.reservation.depAirportNm ?? '-',
+                      airline: '${widget.reservation.retAirlineNm ?? '-'} '
+                          '${widget.reservation.retFlightNo ?? '-'}',
                     ),
                   ],
                 ],
@@ -115,12 +134,12 @@ class ReservationConfirmScreen extends StatelessWidget {
               title: '탑승객 정보',
               child: Column(
                 children: [
-                  _infoRow('성명', reservation.passengerName),
+                  _infoRow('성명', widget.reservation.passengerName),
                   const SizedBox(height: 8),
                   _infoRow('생년월일',
-                      FormatUtils.birth(reservation.passengerBirth)),
+                      FormatUtils.birth(widget.reservation.passengerBirth)),
                   const SizedBox(height: 8),
-                  _infoRow('성별', reservation.passengerGender),
+                  _infoRow('성별', widget.reservation.passengerGender),
                 ],
               ),
             ),
@@ -132,11 +151,11 @@ class ReservationConfirmScreen extends StatelessWidget {
               title: '최종 결제금액',
               child: Column(
                 children: [
-                  _priceRow('가는편', reservation.depPrice),
-                  if (reservation.isRoundTrip &&
-                      reservation.retPrice != null) ...[
+                  _priceRow('가는편', widget.reservation.depPrice),
+                  if (widget.reservation.isRoundTrip &&
+                      widget.reservation.retPrice != null) ...[
                     const SizedBox(height: 8),
-                    _priceRow('오는편', reservation.retPrice!),
+                    _priceRow('오는편', widget.reservation.retPrice!),
                   ],
                   const SizedBox(height: 8),
                   _priceRow('발급 수수료', AirportConstants.issueFee,
@@ -150,7 +169,7 @@ class ReservationConfirmScreen extends StatelessWidget {
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        FormatUtils.price(reservation.totalPrice),
+                        FormatUtils.price(widget.reservation.totalPrice),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
@@ -168,7 +187,6 @@ class ReservationConfirmScreen extends StatelessWidget {
             // ── 버튼 행 ───────────────────────────────────
             Row(
               children: [
-                // 다시 입력
                 Expanded(
                   child: CommonButton(
                     text: '다시 입력',
@@ -182,14 +200,13 @@ class ReservationConfirmScreen extends StatelessWidget {
 
                 const SizedBox(width: 12),
 
-                // 최종 예약
                 Expanded(
                   flex: 2,
                   child: CommonButton(
                     text: '최종예약',
                     onPressed: () {
                       debugPrint('[ReservationConfirmScreen] 최종예약 클릭 → '
-                          '총금액: ${reservation.totalPrice}원');
+                          '총금액: ${widget.reservation.totalPrice}원');
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -217,7 +234,6 @@ class ReservationConfirmScreen extends StatelessWidget {
                 ),
               ],
             ),
-
           ],
         ),
       ),
@@ -225,10 +241,7 @@ class ReservationConfirmScreen extends StatelessWidget {
   }
 
   // ── 섹션 카드 ─────────────────────────────────────────────
-  Widget _sectionCard({
-    required String title,
-    required Widget child,
-  }) {
+  Widget _sectionCard({required String title, required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -238,13 +251,11 @@ class ReservationConfirmScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              )),
           const Divider(height: 16),
           child,
         ],
@@ -287,8 +298,7 @@ class ReservationConfirmScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 )),
             Text(date,
-                style: const TextStyle(
-                    color: AppColors.textSecondary)),
+                style: const TextStyle(color: AppColors.textSecondary)),
           ],
         ),
         const SizedBox(height: 8),
@@ -304,8 +314,7 @@ class ReservationConfirmScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     )),
                 Text(depAirport,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary)),
+                    style: const TextStyle(color: AppColors.textSecondary)),
               ],
             ),
             const Icon(Icons.arrow_forward,
@@ -319,8 +328,7 @@ class ReservationConfirmScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     )),
                 Text(arrAirport,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary)),
+                    style: const TextStyle(color: AppColors.textSecondary)),
               ],
             ),
           ],

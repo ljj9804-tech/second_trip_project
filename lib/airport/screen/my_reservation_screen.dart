@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/widget/app_base_layout.dart';
 import '../../common/widget/common_button.dart';
@@ -20,17 +21,21 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
   // static const String _tempMemberId = 'user1';
   // ✅ [변경 후] _tempMid
   // ✅ [추후 로그인 연동] null → loginController.mid 로 교체
-  static const String _tempMid = 'user1';
+  // ✅ [변경 전] static const String _tempMid = 'user1';
+  // ✅ [변경 후] SharedPreferences 에서 가져오기
+  String _mid = '';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ [변경 전] memberId: $_tempMemberId
-      // ✅ [변경 후] mid: $_tempMid
-      debugPrint('[MyReservationScreen] 예약 목록 조회 시작 → mid: $_tempMid');
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // ✅ [변경 전] _tempMid 하드코딩
+      // ✅ [변경 후] SharedPreferences 에서 가져오기
+      final prefs = await SharedPreferences.getInstance();
+      _mid = prefs.getString('userMid') ?? '';
+      debugPrint('[MyReservationScreen] 예약 목록 조회 시작 → mid: $_mid');
       context.read<ReservationController>()
-          .fetchReservations(_tempMid);
+          .fetchReservations(_mid);
     });
   }
 

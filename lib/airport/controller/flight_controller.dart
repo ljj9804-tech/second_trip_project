@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import '../../common/constants/api_constants.dart';
 import '../model/flight_item.dart';
 
 class FlightController with ChangeNotifier {
@@ -140,8 +141,11 @@ class FlightController with ChangeNotifier {
         '출발: $_arrAirportId / 도착: $_depAirportId / 날짜: $retPlandTime');
 
     try {
-      final baseUrl = dotenv.env['SPRING_BASE_URL'] ?? '';
-      final url = '$baseUrl/airport/flights'
+      // final baseUrl = dotenv.env['SPRING_BASE_URL'] ?? '';
+      // final url = '$baseUrl/airport/flights'
+      final baseUrl = ApiConstants.baseUrl;
+      // final url = '${baseUrl}api/airport/flights'
+      final url = '$baseUrl/api/airport/flights'
           '?depAirportId=$_arrAirportId'
           '&arrAirportId=$_depAirportId'
           '&depPlandTime=$retPlandTime';
@@ -186,8 +190,12 @@ class FlightController with ChangeNotifier {
   // }
   // ✅ [변경 후] 스프링부트 API
   Future<void> _fetchPage(int page) async {
-    final baseUrl = dotenv.env['SPRING_BASE_URL'] ?? '';
-    final url = '$baseUrl/airport/flights'
+    // final baseUrl = dotenv.env['SPRING_BASE_URL'] ?? '';
+    // final url = '$baseUrl/airport/flights'
+    final baseUrl = ApiConstants.baseUrl;
+
+    // final url = '${baseUrl}api/airport/flights'
+    final url = '$baseUrl/api/airport/flights'
         '?depAirportId=$_depAirportId'
         '&arrAirportId=$_arrAirportId'
         '&depPlandTime=$_depPlandTime';
