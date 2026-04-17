@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../util/secure_storage_helper.dart';
 import 'MyBookingScreen.dart';
 import 'MyReviewScreen.dart';
 import 'WishlistScreen.dart';
@@ -58,19 +59,22 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
             // ⭐ 여기 로그아웃 버튼 클릭했을 때 실행되는 부분!
             TextButton(
-              onPressed: () async { // 1. async 추가
-                // 2. 주머니(SharedPreferences) 열어서 싹 비우기!!
+              onPressed: () async {
+                // SharedPreferences 삭제
                 final SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.clear(); // ⭐ 이게 핵심! 이름표를 다 버리는 거야.
+                await prefs.clear();
+
+                // SecureStorage도 삭제 ← 이게 핵심!
+                await SecureStorageHelper().logout();
 
                 if (!context.mounted) return;
-
-                Navigator.pop(context); // 다이얼로그 닫기
-                // 3. 메인화면으로 슝~ 가기
+                Navigator.pop(context);
                 Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('로그아웃 되었습니다.'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                      content: Text('로그아웃 되었습니다.'),
+                      duration: Duration(seconds: 2)),
                 );
               },
               child: Text('로그아웃', style: TextStyle(color: classicBlue, fontWeight: FontWeight.bold)),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../util/secure_storage_helper.dart';
 import 'MyPageScreen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -45,10 +46,13 @@ class _MainScreenState extends State<MainScreen> {
 
   // ⭐ 저장소에서 로그인 정보를 가져와 화면을 갱신하는 함수
   Future<void> _checkLoginStatus() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final storage = SecureStorageHelper();
+    final loggedIn = await storage.isLoggedIn();
+    final name = await storage.getUserName() ?? '';
+
     setState(() {
-      isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-      userName = prefs.getString('userName') ?? "";
+      isLoggedIn = loggedIn;
+      userName = name;
     });
   }
 
@@ -242,22 +246,22 @@ class _MainScreenState extends State<MainScreen> {
       currentIndex: 0,
       onTap: (index) async {
         if (index == 4) {
-          final SharedPreferences prefs = await SharedPreferences.getInstance();
-          bool loginStatus = prefs.getBool('isLoggedIn') ?? false;
+          // SharedPreferences 대신 SecureStorageHelper 사용
+          final storage = SecureStorageHelper();
+          bool loginStatus = await storage.isLoggedIn();
+          String name = await storage.getUserName() ?? '사용자';
+          String email = await storage.getUserEmail() ?? '';
 
           if (loginStatus) {
-            String name = prefs.getString('userName') ?? "사용자";
-            String email = prefs.getString('userEmail') ?? "";
-
             if (!mounted) return;
-            // 마이페이지에 갔다가 돌아올 때도 상단 앱바 갱신을 위해 await 사용
             await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MyPageScreen(userName: name, userEmail: email),
+                builder: (context) =>
+                    MyPageScreen(userName: name, userEmail: email),
               ),
             );
-            _checkLoginStatus(); // 로그아웃하고 돌아올 수도 있으니 다시 체크!
+            _checkLoginStatus();
           } else {
             if (!mounted) return;
             await Navigator.pushNamed(context, '/logout_mypage');

@@ -160,4 +160,23 @@ class ApiClient {
       return false;
     }
   }
+
+  Future<List<String>> getBookedDates({
+    required String contentId,
+    required String roomCode,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/reservations/booked-dates',
+        queryParameters: {
+          'contentId': contentId,
+          'roomCode': roomCode,
+        },
+      );
+      return List<String>.from(response.data);
+    } on DioException catch (e) {
+      print('예약된 날짜 조회 에러: ${e.message}');
+      return [];
+    }
+  }
 }
