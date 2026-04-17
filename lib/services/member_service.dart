@@ -3,28 +3,30 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-class MemberService {
-  static String get baseUrl => dotenv.env['BASE_URL'] ?? 'http://10.0.2.2:8080';
+import '../util/secure_storage_helper.dart';
 
-  // ⭐ 1. 이메일 중복 확인
+class MemberService {
+  static String get baseUrl =>
+      dotenv.env['BASE_URL'] ?? 'http://10.0.2.2:8080';
+
+  final _storage = SecureStorageHelper();
+
+  // ─── 이메일 중복 확인 ─────────────────────────────
   Future<bool> checkEmailDuplicate(String email) async {
     try {
-      // 인텔리제이 컨트롤러 주소와 정확히 일치시킴
       final url = Uri.parse('$baseUrl/api/member/exists/$email');
       final response = await http.get(url);
-
       if (response.statusCode == 200) {
-        // 서버에서 온 true/false 글자를 불리언 타입으로 변환
         return jsonDecode(response.body) == true;
       }
       return false;
     } catch (e) {
       print('중복 확인 에러: $e');
-      return true; // 에러 시 안전하게 가입 방지용으로 true 리턴
+      return true;
     }
   }
 
-  // ⭐ 2. 로그인 기능
+  // ─── 로그인 ───────────────────────────────────────
   Future<Map<String, dynamic>?> login(String mid, String mpw) async {
     try {
       final url = Uri.parse('$baseUrl/api/member/login');
@@ -35,22 +37,30 @@ class MemberService {
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> userData = jsonDecode(utf8.decode(response.bodyBytes));
-        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        final Map<String, dynamic> userData =
+        jsonDecode(utf8.decode(response.bodyBytes));
 
-        await prefs.setBool('isLoggedIn', true);
-        await prefs.setString('userMid', userData['mid'] ?? mid);
-        await prefs.setString('userName', userData['mname'] ?? "사용자");
-        await prefs.setString('userEmail', userData['email'] ?? "");
+        // 회원 정보 보안 저장소에 저장
+        await _storage.saveUserInfo(
+          mid: userData['mid'] ?? mid,
+          name: userData['mname'] ?? '사용자',
+          email: userData['email'] ?? '',
+        );
 
+        // 토큰 저장
         if (userData['accessToken'] != null) {
-          await prefs.setString('accessToken', userData['accessToken']);
+          await _storage.saveAccessToken(userData['accessToken']);
         }
         if (userData['refreshToken'] != null) {
-          await prefs.setString('refreshToken', userData['refreshToken']);
+          await _storage.saveRefreshToken(userData['refreshToken']);
         }
 
+        print("========================================");
         print("✅ 로그인 성공!");
+        print("🎫 토큰: ${await _storage.getAccessToken()}");
+        print("👤 사용자: ${await _storage.getUserName()}");
+        print("========================================");
+
         return userData;
       }
       return null;
@@ -60,20 +70,25 @@ class MemberService {
     }
   }
 
-  // ⭐ 3. 로그아웃
+  // ─── 로그아웃 ─────────────────────────────────────
+  // 변경
   Future<void> logout() async {
+    // SharedPreferences 삭제
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-    print("로그아웃 완료");
+
+    // SecureStorage도 삭제 ← 이게 빠져있어서 문제!
+    await SecureStorageHelper().logout();
+
+    print("로그아웃 완료: 전체 데이터 삭제됨");
   }
 
-  // ⭐ 4. 로그인 상태 체크
+  // ─── 로그인 상태 체크 ─────────────────────────────
   Future<bool> checkLoginStatus() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('isLoggedIn') ?? false;
+    return await _storage.isLoggedIn();
   }
 
-  // ⭐ 5. 회원가입 전송 함수
+  // ─── 회원가입 ─────────────────────────────────────
   Future<bool> register(Map<String, String> userData) async {
     try {
       final url = Uri.parse('$baseUrl/api/member/register');
@@ -82,17 +97,30 @@ class MemberService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(userData),
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("✅ 서버에 회원가입 데이터 전송 성공!");
+        print("✅ 회원가입 성공!");
         return true;
       } else {
         print("❌ 서버 에러: ${response.statusCode}");
         return false;
       }
     } catch (e) {
-      print('회원가입 통신 에러: $e');
+      print('회원가입 에러: $e');
       return false;
     }
+  }
+
+  // ─── 토큰 가져오기 ────────────────────────────────
+  Future<String?> getAccessToken() async {
+    return await _storage.getAccessToken();
+  }
+
+  // ─── 현재 사용자 정보 가져오기 ───────────────────
+  Future<Map<String, String?>> getUserInfo() async {
+    return {
+      'mid': await _storage.getUserMid(),
+      'name': await _storage.getUserName(),
+      'email': await _storage.getUserEmail(),
+    };
   }
 }

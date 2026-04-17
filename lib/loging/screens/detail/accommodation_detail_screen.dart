@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/accommodation_providers.dart';
+import '../../../util/api_client.dart';
+import '../../../util/secure_storage_helper.dart';
 import '../../data/models/accommodation.dart';
 import '../../data/models/room.dart';
 import '../../theme/app_theme.dart';
@@ -82,9 +84,43 @@ class AccommodationDetailScreen extends ConsumerWidget {
                     color: isFav ? AppTheme.primary : AppTheme.textPrimary,
                     size: 20,
                   ),
-                  onPressed: () => ref
-                      .read(favoriteProvider.notifier)
-                      .toggle(detail.contentId),
+                  onPressed: () async {
+                    final isLoggedIn = await SecureStorageHelper().isLoggedIn();
+
+                    // 비회원이면 로그인 안내
+                    if (!isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('찜하기는 회원만 가능합니다. 로그인해주세요!'),
+                          backgroundColor: AppTheme.primary,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // 회원이면 백엔드 API 호출
+                    if (isFav) {
+                      // 찜 삭제
+                      final success = await ApiClient()
+                          .removeFavorite(detail.contentId);
+                      if (success) {
+                        ref.read(favoriteProvider.notifier)
+                            .toggle(detail.contentId);
+                      }
+                    } else {
+                      // 찜 추가
+                      final result = await ApiClient().addFavorite(
+                        contentId: detail.contentId,
+                        accommodationTitle: detail.title,
+                        firstImage: detail.firstImage,
+                        addr1: detail.addr1,
+                      );
+                      if (result != null) {
+                        ref.read(favoriteProvider.notifier)
+                            .toggle(detail.contentId);
+                      }
+                    }
+                  },
                 ),
               ),
             ],
@@ -404,10 +440,25 @@ class AccommodationDetailScreen extends ConsumerWidget {
               top: BorderSide(color: AppTheme.border, width: 0.5)),
         ),
         child: ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
+            final isLoggedIn = await SecureStorageHelper().isLoggedIn();
+
+            if (!isLoggedIn) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('예약은 회원만 가능합니다. 로그인해주세요!'),
+                  backgroundColor: AppTheme.primary,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+
+            // 회원이면 예약 화면으로 이동
+            // 나중에 날짜 선택 화면 추가
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('예약 기능은 추후 연동 예정입니다.'),
+                content: Text('예약 기능 준비 중입니다.'),
                 backgroundColor: AppTheme.primary,
               ),
             );

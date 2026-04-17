@@ -1,5 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../../util/api_client.dart';
+import '../../../util/secure_storage_helper.dart';
 import '../../data/models/room.dart';
 import '../../theme/app_theme.dart';
 
@@ -23,10 +25,7 @@ class RoomDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─── 객실 이미지 ────────────────────────────────
             _buildImages(),
-
-            // ─── 기본 정보 ──────────────────────────────────
             Container(
               color: AppTheme.surface,
               padding: const EdgeInsets.all(16),
@@ -50,7 +49,6 @@ class RoomDetailScreen extends StatelessWidget {
                       _infoBadge('${room.roomCount}실'),
                     ],
                   ),
-                  // 객실 소개
                   if (room.roomIntro != null &&
                       room.roomIntro!.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -65,8 +63,6 @@ class RoomDetailScreen extends StatelessWidget {
                 ],
               ),
             ),
-
-            // ─── 가격 정보 ──────────────────────────────────
             Container(
               margin: const EdgeInsets.only(top: 8),
               color: AppTheme.surface,
@@ -88,29 +84,15 @@ class RoomDetailScreen extends StatelessWidget {
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                     children: [
-                      _priceItem(
-                        label: '비수기 주중',
-                        price: room.offSeasonWeekMin,
-                      ),
-                      _priceItem(
-                        label: '비수기 주말',
-                        price: room.offSeasonWeekend,
-                      ),
-                      _priceItem(
-                        label: '성수기 주중',
-                        price: room.peakSeasonWeekMin,
-                      ),
-                      _priceItem(
-                        label: '성수기 주말',
-                        price: room.peakSeasonWeekend,
-                      ),
+                      _priceItem(label: '비수기 주중', price: room.offSeasonWeekMin),
+                      _priceItem(label: '비수기 주말', price: room.offSeasonWeekend),
+                      _priceItem(label: '성수기 주중', price: room.peakSeasonWeekMin),
+                      _priceItem(label: '성수기 주말', price: room.peakSeasonWeekend),
                     ],
                   ),
                 ],
               ),
             ),
-
-            // ─── 시설 정보 ──────────────────────────────────
             if (room.facilityList.isNotEmpty)
               Container(
                 margin: const EdgeInsets.only(top: 8),
@@ -134,8 +116,7 @@ class RoomDetailScreen extends StatelessWidget {
                             horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFF0F1),
-                          borderRadius:
-                          BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                               color: const Color(0xFFFFCDD2),
                               width: 0.5),
@@ -150,7 +131,6 @@ class RoomDetailScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
             const SizedBox(height: 80),
           ],
         ),
@@ -165,13 +145,143 @@ class RoomDetailScreen extends StatelessWidget {
               top: BorderSide(color: AppTheme.border, width: 0.5)),
         ),
         child: ElevatedButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('예약 기능은 추후 연동 예정입니다.'),
-                backgroundColor: AppTheme.primary,
+          onPressed: room.roomCount == 0
+              ? null
+              : () async {
+            // ─── 로그인 확인 ───────────────────────
+            final isLoggedIn =
+            await SecureStorageHelper().isLoggedIn();
+            print('===== 로그인 상태: $isLoggedIn =====');
+
+            if (!isLoggedIn) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('예약은 회원만 가능합니다. 로그인해주세요!'),
+                  backgroundColor: AppTheme.primary,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+
+            // ─── 체크인 날짜 선택 ──────────────────
+            final checkIn = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate:
+              DateTime.now().add(const Duration(days: 365)),
+              helpText: '체크인 날짜 선택',
+              builder: (context, child) => Theme(
+                data: ThemeData(
+                  colorScheme: const ColorScheme.light(
+                      primary: AppTheme.primary),
+                ),
+                child: child!,
               ),
             );
+            if (checkIn == null) return;
+
+            // ─── 체크아웃 날짜 선택 ─────────────────
+            final checkOut = await showDatePicker(
+              context: context,
+              initialDate: checkIn.add(const Duration(days: 1)),
+              firstDate: checkIn.add(const Duration(days: 1)),
+              lastDate:
+              DateTime.now().add(const Duration(days: 365)),
+              helpText: '체크아웃 날짜 선택',
+              builder: (context, child) => Theme(
+                data: ThemeData(
+                  colorScheme: const ColorScheme.light(
+                      primary: AppTheme.primary),
+                ),
+                child: child!,
+              ),
+            );
+            if (checkOut == null) return;
+
+            final nights = checkOut.difference(checkIn).inDays;
+            final totalPrice = room.offSeasonWeekMin != null
+                ? room.offSeasonWeekMin! * nights
+                : 0;
+
+            // ─── 예약 확인 다이얼로그 ──────────────
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: const Text('예약 확인'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('객실: ${room.roomTitle}'),
+                    const SizedBox(height: 4),
+                    Text('체크인: ${checkIn.year}.${checkIn.month}.${checkIn.day}'),
+                    Text('체크아웃: ${checkOut.year}.${checkOut.month}.${checkOut.day}'),
+                    Text('$nights박'),
+                    const SizedBox(height: 4),
+                    Text(
+                      '총 가격: ${totalPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}원',
+                      style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.pop(context, false),
+                    child: const Text('취소',
+                        style: TextStyle(
+                            color: AppTheme.textSecondary)),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.pop(context, true),
+                    child: const Text('예약하기',
+                        style:
+                        TextStyle(color: AppTheme.primary)),
+                  ),
+                ],
+              ),
+            );
+            if (confirm != true) return;
+
+            // ─── 백엔드 API 호출 ───────────────────
+            try {
+              final result = await ApiClient().createReservation(
+                contentId: room.contentId,
+                roomCode: room.roomCode,
+                accommodationTitle: '',
+                roomTitle: room.roomTitle,
+                checkInDate:
+                '${checkIn.year}-${checkIn.month.toString().padLeft(2, '0')}-${checkIn.day.toString().padLeft(2, '0')}',
+                checkOutDate:
+                '${checkOut.year}-${checkOut.month.toString().padLeft(2, '0')}-${checkOut.day.toString().padLeft(2, '0')}',
+                guestCount: 1,
+                totalPrice: totalPrice,
+              );
+
+              if (result != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('예약이 완료됐습니다! 🎉'),
+                    backgroundColor: AppTheme.primary,
+                  ),
+                );
+              }
+            } catch (e) {
+              // 에러 메시지 표시 (중복 예약 등)
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      e.toString().replaceAll('Exception: ', '')),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
           },
           child: Text(
             room.displayPrice != '가격문의'
@@ -183,7 +293,6 @@ class RoomDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── 이미지 영역 ─────────────────────────────────────
   Widget _buildImages() {
     final images = [room.img1, room.img2, room.img3]
         .where((img) => img != null && img.isNotEmpty)
@@ -206,13 +315,11 @@ class RoomDetailScreen extends StatelessWidget {
         itemBuilder: (_, i) => CachedNetworkImage(
           imageUrl: images[i]!,
           fit: BoxFit.cover,
-          placeholder: (_, __) =>
-              Container(color: Colors.grey[200]),
+          placeholder: (_, __) => Container(color: Colors.grey[200]),
           errorWidget: (_, __, ___) => Container(
             color: const Color(0xFFEEEEEE),
             child: const Center(
-              child:
-              Icon(Icons.bed, size: 60, color: Color(0xFFCCCCCC)),
+              child: Icon(Icons.bed, size: 60, color: Color(0xFFCCCCCC)),
             ),
           ),
         ),
@@ -220,11 +327,9 @@ class RoomDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── 정보 배지 ───────────────────────────────────────
   Widget _infoBadge(String label) {
     return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(12),
@@ -236,7 +341,6 @@ class RoomDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── 가격 아이템 ─────────────────────────────────────
   Widget _priceItem({required String label, required int? price}) {
     return Container(
       padding: const EdgeInsets.all(12),
