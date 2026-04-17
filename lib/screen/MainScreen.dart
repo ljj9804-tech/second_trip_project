@@ -280,7 +280,6 @@ class _MainScreenState extends State<MainScreen> {
         BottomNavigationBarItem(icon: Icon(Icons.home), label: "홈"),
         BottomNavigationBarItem(icon: Icon(Icons.search), label: "검색"),
         BottomNavigationBarItem(icon: Icon(Icons.location_on), label: "내주변"),
-        BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: "찜"),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "내정보"),
       ],
     );
