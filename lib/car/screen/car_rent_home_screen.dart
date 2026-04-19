@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../controller/calendar_controller.dart';
-import '../controller/rent_comp_controller.dart';
-import 'car_rent_screen.dart';
-import 'table_calendar_screen.dart';
+import '../controller/car_rent_home_controller.dart';
+import '../util/format_util.dart';
+import '../controller/car_rent_list_controller.dart';
+import 'car_list_screen.dart';
+import 'calendar_screen.dart';
 
 class CarRentHomeScreen extends StatefulWidget {
   const CarRentHomeScreen({super.key});
@@ -14,118 +16,153 @@ class CarRentHomeScreen extends StatefulWidget {
 }
 
 class _CarRentHomeScreenState extends State<CarRentHomeScreen> {
-  static const List<String> _regions = [
-    '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종',
-    '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주',
-  ];
-
   String? _selectedRegion;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CarRentHomeController>().fetchRegions();
+    });
+  }
 
   Future<void> _navigateToCalendar(BuildContext context) async {
     final calendar = context.read<CalendarController>();
     final saved = calendar.saveState();
     final confirmed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const TableCalendarScreen()),
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: calendar, //현재 provider를 이곳과 달력화면에서 같이 써야 해서 값을 넘겨줌
+          child: const CalendarScreen(),
+        ),
+      ),
     );
     if (confirmed != true) {
       calendar.restoreState(saved);
     }
   }
 
-  String _formatDate(DateTime date) {
-    const weekDay = ['월', '화', '수', '목', '금', '토', '일'];
-    return '${date.year}.${date.month}.${date.day} (${weekDay[date.weekday - 1]})';
-  }
-
   @override
   Widget build(BuildContext context) {
     final calendar = context.watch<CalendarController>();
 
+    final regions = context.watch<CarRentHomeController>().regions;
+
     return Scaffold(
       appBar: AppBar(title: const Text('렌터카 예약')),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 지역 선택
-            const Text('지역', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedRegion,
-              hint: const Text('지역을 선택하세요'),
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-              items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-              onChanged: (value) => setState(() => _selectedRegion = value),
-            ),
-
-            const SizedBox(height: 24),
-
-            // 인수일
-            const Text('인수일', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            _DateTile(
-              label: calendar.rangeStart != null
-                  ? _formatDate(calendar.rangeStart!)
-                  : '날짜를 선택하세요',
-              time: calendar.startTime,
-              onTap: () => _navigateToCalendar(context),
-            ),
-
-            const SizedBox(height: 24),
-
-            // 반납일
-            const Text('반납일', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            _DateTile(
-              label: calendar.rangeEnd != null
-                  ? _formatDate(calendar.rangeEnd!)
-                  : '날짜를 선택하세요',
-              time: calendar.endTime,
-              onTap: () => _navigateToCalendar(context),
-            ),
-
-            const Spacer(),
-
-            // 확인 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: (_selectedRegion != null &&
-                        calendar.rangeStart != null &&
-                        calendar.rangeEnd != null)
-                    ? () async {
-                        final cal = context.read<CalendarController>();
-                        final start = cal.rangeStart!;
-                        final end = cal.rangeEnd!;
-                        final startDate = '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')}';
-                        final endDate = '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')}';
-
-                        final controller = context.read<RentCompController>();
-                        await controller.fetchByRegion(_selectedRegion!);
-                        await controller.fetchAvailableCars(startDate, endDate);
-                        if (!context.mounted) return;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const CarRentScreen()),
-                        );
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 지역 선택
+                const Text(
+                  '지역',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                child: const Text('확인', style: TextStyle(fontSize: 18)),
-              ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedRegion,
+                  menuMaxHeight: 600,
+                  hint: const Text('지역을 선택하세요'),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                  items: regions
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (value) => setState(() => _selectedRegion = value),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 인수일
+                const Text(
+                  '인수일',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _DateTile(
+                  label: calendar.rangeStart != null
+                      ? formatDate(calendar.rangeStart!)
+                      : '날짜를 선택하세요',
+                  time: calendar.startTime,
+                  onTap: () => _navigateToCalendar(context),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 반납일
+                const Text(
+                  '반납일',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _DateTile(
+                  label: calendar.rangeEnd != null
+                      ? formatDate(calendar.rangeEnd!)
+                      : '날짜를 선택하세요',
+                  time: calendar.endTime,
+                  onTap: () => _navigateToCalendar(context),
+                ),
+
+                const Spacer(),
+
+                // 확인 버튼
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: (_selectedRegion == null ||
+                            calendar.rangeStart == null ||
+                            calendar.rangeEnd == null)
+                        ? null
+                        : () {
+                            final startDate = formatDate(
+                              calendar.rangeStart!,
+                              showWeekDay: false,
+                              separator: '-',
+                            );
+                            final endDate = formatDate(
+                              calendar.rangeEnd!,
+                              showWeekDay: false,
+                              separator: '-',
+                            );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider.value(
+                                  value: context.read<CarRentListController>(),
+                                  child: CarListScreen(
+                                    region: _selectedRegion!,
+                                    startDate: startDate,
+                                    endDate: endDate,
+                                    startTime: calendar.startTime,
+                                    endTime: calendar.endTime,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('확인', style: TextStyle(fontSize: 18)),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       ),
     );
   }
@@ -152,7 +189,11 @@ class _DateTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today, size: 20, color: Colors.blueAccent),
+            const Icon(
+              Icons.calendar_today,
+              size: 20,
+              color: Colors.blueAccent,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

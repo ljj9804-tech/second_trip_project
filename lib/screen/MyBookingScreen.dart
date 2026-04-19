@@ -1,10 +1,33 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:second_trip_project/airport/screen/my_reservation_screen.dart';
 
 class MyBookingScreen extends StatelessWidget {
   const MyBookingScreen({super.key});
 
   final Color classicBlue = const Color(0xFF004680);
+
+  void _openDialog(BuildContext context, BookingType bookingType) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '닫기',
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (_, animation, __, child) {
+        return SlideTransition(
+          position: Tween(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: child,
+        );
+      },
+      pageBuilder: (_, __, ___) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        child: MyReservationScreen(type: bookingType),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +52,18 @@ class MyBookingScreen extends StatelessWidget {
             status: '예약확정',
             color: classicBlue,
             icon: CupertinoIcons.airplane,
+            onTap: () => _openDialog(context, BookingType.flight),
           ),
           const SizedBox(height: 12),
-          // 🏨 숙소 (추가!)
+          // 🏨 숙소
           _buildBookingCard(
             type: '숙소',
             title: '제주 신라호텔 (디럭스 룸)',
             date: '2026.05.20 - 2026.05.23 (3박)',
             status: '예약완료',
-            color: Colors.teal[700]!, // 숙소는 차분한 테일 색상
+            color: Colors.teal[700]!,
             icon: CupertinoIcons.bed_double_fill,
+            onTap: () => _openDialog(context, BookingType.hotel),
           ),
           const SizedBox(height: 12),
           // 🚗 렌터카
@@ -49,6 +74,7 @@ class MyBookingScreen extends StatelessWidget {
             status: '예약완료',
             color: Colors.orange[700]!,
             icon: CupertinoIcons.car_fill,
+            onTap: () => _openDialog(context, BookingType.rental),
           ),
 
           const SizedBox(height: 24),
@@ -89,6 +115,7 @@ class MyBookingScreen extends StatelessWidget {
     required String status,
     required Color color,
     required IconData icon,
+    VoidCallback? onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -101,9 +128,7 @@ class MyBookingScreen extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: () {
-            print('$title 상세 정보로 이동');
-          },
+          onTap: onTap ?? () {},
           child: Column(
             children: [
               Container(
