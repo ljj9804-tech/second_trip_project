@@ -17,7 +17,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _isNewVisible = false;
   bool _isConfirmVisible = false;
 
-  final Color classicBlue = const Color(0xFF004680);
+  final Color classicBlue = const Color(0xFFF7323F);
 
   // ⭐ 비밀번호 변경 로직 함수
   void _attemptChangePassword() {

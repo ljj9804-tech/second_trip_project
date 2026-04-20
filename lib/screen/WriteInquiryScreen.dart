@@ -8,7 +8,7 @@ class WriteInquiryScreen extends StatefulWidget {
 }
 
 class _WriteInquiryScreenState extends State<WriteInquiryScreen> {
-  final Color classicBlue = const Color(0xFF004680);
+  final Color classicBlue = const Color(0xFFF7323F);
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
 

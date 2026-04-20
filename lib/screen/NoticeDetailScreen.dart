@@ -32,7 +32,7 @@ class NoticeDetailScreen extends StatelessWidget {
                 children: [
                   Text(
                     notice['tag']!,
-                    style: const TextStyle(color: Color(0xFF004680), fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: Color(0xFFF7323F), fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Text(
