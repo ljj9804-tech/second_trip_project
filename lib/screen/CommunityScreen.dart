@@ -93,7 +93,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             );
           }
         },
-        backgroundColor: const Color(0xFF004A7C),
+        backgroundColor: const Color(0xFFF7323F),
         child: const Icon(Icons.edit, color: Colors.white),
       ),
     );
@@ -112,7 +112,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 5),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF004A7C) : Colors.grey[200],
+          color: isSelected ? const Color(0xFFF7323F) : Colors.grey[200],
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(
