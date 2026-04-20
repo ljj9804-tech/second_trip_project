@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../providers/accommodation_providers.dart';
+import '../../util/api_client.dart';
+import '../../util/secure_storage_helper.dart';
 import '../data/models/accommodation.dart';
 import '../theme/app_theme.dart';
 
@@ -41,13 +43,42 @@ class AccommodationCard extends ConsumerWidget {
                 children: [
                   _buildImage(),
                   // 찜 버튼
+                  // 찜 버튼
                   Positioned(
                     top: 10,
                     right: 10,
                     child: GestureDetector(
-                      onTap: () => ref
-                          .read(favoriteProvider.notifier)
-                          .toggle(item.contentId),
+                      onTap: () async {
+                        final isLoggedIn =
+                        await SecureStorageHelper().isLoggedIn();
+
+                        // 비회원이면 로그인 안내
+                        if (!isLoggedIn) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('찜하기는 회원만 가능합니다. 로그인해주세요!'),
+                              backgroundColor: AppTheme.primary,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
+
+                        // 회원이면 찜 추가/삭제
+                        if (isFav) {
+                          await ApiClient().removeFavorite(item.contentId);
+                        } else {
+                          await ApiClient().addFavorite(
+                            contentId: item.contentId,
+                            accommodationTitle: item.title,
+                            firstImage: item.firstImage,
+                            addr1: item.addr1,
+                          );
+                        }
+                        ref.read(favoriteProvider.notifier)
+                            .toggle(item.contentId);
+                      },
                       child: Container(
                         width: 32,
                         height: 32,

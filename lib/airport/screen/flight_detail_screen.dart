@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../common/constants/app_colors.dart';
 import '../constants/airport_constants.dart';
 import '../controller/flight_controller.dart';
@@ -241,13 +242,51 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
 
               // ── 항공권 예약 버튼 ──────────────────────
               ElevatedButton(
-                onPressed: () {
+                // 로그인 체크 전
+                // onPressed: () {
+                //   Navigator.push(
+                //     context,
+                //     MaterialPageRoute(
+                //         builder: (_) => const ReservationScreen()),
+                //   );
+                // },
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+                  if (!mounted) return;
+
+                  if (!isLoggedIn) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('로그인이 필요한 서비스입니다.')),
+                    );
+
+                    // ✅ [변경] pushNamed → push + await 로 결과 기다리기
+                    await Navigator.pushNamed(context, '/login');
+
+                    // ✅ 로그인 후 돌아왔을 때 다시 체크
+                    if (!mounted) return;
+                    final prefsAfter = await SharedPreferences.getInstance();
+                    final isLoggedInAfter = prefsAfter.getBool('isLoggedIn') ?? false;
+
+                    if (isLoggedInAfter) {
+                      // ✅ 로그인 성공 → 예약 화면으로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ReservationScreen()),
+                      );
+                    }
+                    return;
+                  }
+
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (_) => const ReservationScreen()),
+                    MaterialPageRoute(builder: (_) => const ReservationScreen()),
                   );
                 },
+
+
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,

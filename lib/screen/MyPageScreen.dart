@@ -2,18 +2,17 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// ⭐ MemberService 임포트 (경로는 프로젝트 구조에 맞게 확인해줘!)
+import '../services/member_service.dart';
 import 'MyBookingScreen.dart';
 import 'MyReviewScreen.dart';
 import 'WishlistScreen.dart';
 import 'EditProfileScreen.dart';
 
 class MyPageScreen extends StatefulWidget {
-  // ⭐ 데이터를 받기 위한 변수 선언
   final String userName;
   final String userEmail;
 
-  // ⭐ 생성자에서 데이터를 필수(required)로 받게 수정
   const MyPageScreen({
     super.key,
     required this.userName,
@@ -27,22 +26,23 @@ class MyPageScreen extends StatefulWidget {
 class _MyPageScreenState extends State<MyPageScreen> {
   final Color classicBlue = const Color(0xFFF7323F);
 
-  // ⭐ late 키워드를 써서 나중에 initState에서 초기화해줄게
+  // ⭐ MemberService 인스턴스 생성
+  final MemberService _memberService = MemberService();
+
   late String _userName;
   late String _userEmail;
-  String _userPhone = "010-1234-5678"; // 폰번호는 나중에 서버에서 더 가져오면 돼!
+  String _userPhone = "010-1234-5678";
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    // ⭐ 위젯이 생성될 때 넘겨받은(widget.xxx) 데이터를 상태 변수에 대입!
     _userName = widget.userName;
     _userEmail = widget.userEmail;
   }
 
-  // 로그아웃 확인 다이얼로그
+  // ⭐ 로그아웃 확인 다이얼로그 (수정 완료!)
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -56,21 +56,24 @@ class _MyPageScreenState extends State<MyPageScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('취소', style: TextStyle(color: Colors.grey)),
             ),
-            // ⭐ 여기 로그아웃 버튼 클릭했을 때 실행되는 부분!
             TextButton(
-              onPressed: () async { // 1. async 추가
-                // 2. 주머니(SharedPreferences) 열어서 싹 비우기!!
-                final SharedPreferences prefs = await SharedPreferences.getInstance();
-                await prefs.clear(); // ⭐ 이게 핵심! 이름표를 다 버리는 거야.
+              onPressed: () async {
+                // 1. 서비스의 logout() 호출 (내부적으로 모든 저장소 삭제)
+                await _memberService.logout();
 
                 if (!context.mounted) return;
 
-                Navigator.pop(context); // 다이얼로그 닫기
-                // 3. 메인화면으로 슝~ 가기
-                Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                // 2. 다이얼로그 닫기
+                Navigator.pop(context);
+
+                // 3. 메인화면으로 이동하며 모든 스택 비우기
+                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('로그아웃 되었습니다.'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                      content: Text('로그아웃 되었습니다.'),
+                      duration: Duration(seconds: 2)
+                  ),
                 );
               },
               child: Text('로그아웃', style: TextStyle(color: classicBlue, fontWeight: FontWeight.bold)),
@@ -142,18 +145,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        // ⭐ 이 부분을 수정했어!
         leading: IconButton(
-          icon: const Icon(CupertinoIcons.back, color: Colors.black), // 누나가 그린 화살표 아이콘
-          onPressed: () {
-            Navigator.pop(context); // 누르면 이전 화면(홈/메인)으로 돌아가기
-          },
+          icon: const Icon(CupertinoIcons.back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 1. 프로필 섹션 (데이터 연동 완료!)
+            // 1. 프로필 섹션
             Container(
               color: Colors.white,
               padding: const EdgeInsets.all(24.0),
@@ -187,10 +187,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ⭐ 넘겨받은 이름 표시!
                       Text(_userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      // ⭐ 넘겨받은 이메일 표시!
                       Text(_userEmail, style: TextStyle(color: Colors.grey[600])),
                     ],
                   ),
@@ -254,8 +252,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildMenuItem(CupertinoIcons.chat_bubble_2, '1:1 문의 내역', onTap: () => Navigator.pushNamed(context, '/inquiry')),
                   _buildMenuItem(CupertinoIcons.info_circle, '고객센터', onTap: () {}),
                   _buildMenuItem(CupertinoIcons.square_arrow_right, '로그아웃', isLast: true, textColor: Colors.redAccent, onTap: () => _showLogoutDialog(context)),
-                  _buildMenuItem(CupertinoIcons.bell, '공지사항', onTap: () => Navigator.pushNamed(context, '/notice')
-                  ),
+                  _buildMenuItem(CupertinoIcons.bell, '공지사항', onTap: () => Navigator.pushNamed(context, '/notice')),
                 ],
               ),
             ),
@@ -265,7 +262,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  // --- 위젯 빌더 함수들 ---
   Widget _buildStatItem(String label, String count, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,

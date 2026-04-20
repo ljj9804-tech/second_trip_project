@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/airport_constants.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/widget/app_base_layout.dart';
@@ -22,15 +23,41 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   // ── 탑승객 입력 컨트롤러 ──────────────────────────────────
   final _formKey             = GlobalKey<FormState>();
-  final _lastNameController  = TextEditingController(text: '홍');       // ✅ [테스트용]
-  final _firstNameController = TextEditingController(text: '길동');     // ✅ [테스트용]
-  final _birthController     = TextEditingController(text: '19990101'); // ✅ [테스트용]
+  // final _lastNameController  = TextEditingController(text: '홍');       // ✅ [테스트용]
+  // final _firstNameController = TextEditingController(text: '길동');     // ✅ [테스트용]
+  // final _birthController     = TextEditingController(text: '19990101'); // ✅ [테스트용]
+  final _lastNameController  = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _birthController     = TextEditingController();
   String _selectedNation     = '대한민국';
   String _selectedGender     = '남성';
   bool   _isLoading          = false;
 
   final List<String> _nations = ['대한민국', '미국', '일본', '중국', '기타'];
   final List<String> _genders = ['남성', '여성'];
+
+  // ✅ [추가] initState
+  @override
+  void initState() {
+    super.initState();
+    //  화면이 처음 열릴 때 자동으로 호출되는 함수야.
+    // _loadUserInfo() 를 여기서 호출해서 화면 열리자마자 유저 정보 가져오게 해!
+    _loadUserInfo(); // 화면 열릴 때 자동으로 실행
+  }
+
+// ✅ [추가] 로그인 정보 자동입력
+  Future<void> _loadUserInfo() async {
+    // SharedPreferences 에서 저장된 이름 꺼내기
+    final prefs = await SharedPreferences.getInstance();
+    final userName = prefs.getString('userName') ?? '';
+    if (userName.isNotEmpty && userName.length >= 2) {
+      setState(() {
+        _lastNameController.text  = userName.substring(0, 1); // 첫 글자 = 성
+        _firstNameController.text = userName.substring(1);    // 나머지 = 이름
+      });
+    }
+  }
+
 
   @override
   void dispose() {
@@ -42,6 +69,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   Future<void> _onReserve() async {
     debugPrint('[ReservationScreen] 계속 예약 버튼 클릭');
+
 
     if (!_formKey.currentState!.validate()) {
       debugPrint('[ReservationScreen] 유효성 검사 실패');
@@ -69,10 +97,28 @@ class _ReservationScreenState extends State<ReservationScreen> {
     // ✅ [변경 후] mid 추가 (로그인 연동 후 교체)
     // final mid = context.read<LoginController>().mid;
 
+    // ✅ [변경 전] 'user1' 하드코딩
+    // mid: 'user1'
+    // ✅ [변경 후] SharedPreferences 에서 가져오기
+    final prefs = await SharedPreferences.getInstance();
+    final mid = prefs.getString('userMid') ?? '';
+    debugPrint('[ReservationScreen] mid: $mid');
+
+
+    // ✅ [추가] 로그인 확인 로그
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final token = prefs.getString('accessToken') ?? '';
+    debugPrint('[ReservationScreen] 로그인 여부: $isLoggedIn');
+    debugPrint('[ReservationScreen] mid: $mid');
+    debugPrint('[ReservationScreen] 토큰: $token');
+
+
+
     final reservation = ReservationItem(
       // ✅ [추후 로그인 연동] null → loginController.mid 로 교체
       // mid:             null,
-      mid:             'user1',  // ✅ [테스트용]
+      // mid:             'user1',  // ✅ [테스트용]
+      mid:             mid,
       airlineNm:       dep.airlineNm,
       flightNo:        dep.flightNo,
       depAirportNm:    dep.depAirportNm,
