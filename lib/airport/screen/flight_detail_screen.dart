@@ -216,14 +216,21 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('결제 예상금액',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          '결제 예상금액 (${controller.adultCount + controller.childCount + controller.infantCount}명)',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         Text(
                           // ✅ [변경 전] _formatPrice() + 1000 하드코딩
                           // ✅ [변경 후] FormatUtils + AirportConstants 사용
+                          // FormatUtils.price(
+                          //   dep.price +
+                          //       (controller.selectedRet?.price ?? 0) +
+                          //       AirportConstants.issueFee,
+                          // ),
                           FormatUtils.price(
-                            dep.price +
-                                (controller.selectedRet?.price ?? 0) +
+                            (dep.price + (controller.selectedRet?.price ?? 0)) *
+                                (controller.adultCount + controller.childCount + controller.infantCount) +
                                 AirportConstants.issueFee,
                           ),
                           style: const TextStyle(
@@ -372,13 +379,25 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 ),
               ],
             ),
-            Text(
-              _formatPrice(item.price),
-              style: const TextStyle(
-                color: Colors.blue,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _formatPrice(item.price),
+                  style: const TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const Text(
+                  '성인 1인 기준',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

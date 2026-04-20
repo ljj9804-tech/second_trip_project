@@ -47,7 +47,8 @@ class _ReservationConfirmScreenState extends State<ReservationConfirmScreen> {
   @override
   Widget build(BuildContext context) {
     debugPrint('[ReservationConfirmScreen] 예약 확인 → '
-        '탑승객: ${widget.reservation.passengerName} / '
+        '탑승객: ${widget.reservation.passengers.isNotEmpty
+        ? widget.reservation.passengers[0].passengerName : '-'} / '
         '총금액: ${widget.reservation.totalPrice}');
 
     return AppBaseLayout(
@@ -80,7 +81,11 @@ class _ReservationConfirmScreenState extends State<ReservationConfirmScreen> {
               title: '예약 정보',
               child: Column(
                 children: [
-                  _infoRow('예약자 이름', widget.reservation.passengerName),
+                  // _infoRow('예약자 이름', widget.reservation.passengerName),
+                  _infoRow('예약자 이름',
+                      widget.reservation.passengers.isNotEmpty
+                          ? widget.reservation.passengers[0].passengerName
+                          : '-'),
                   const SizedBox(height: 8),
                   // ✅ [변경 전] '-' → [변경 후] SharedPreferences 에서 가져오기
                   _infoRow('이메일', _email),
@@ -134,12 +139,30 @@ class _ReservationConfirmScreenState extends State<ReservationConfirmScreen> {
               title: '탑승객 정보',
               child: Column(
                 children: [
-                  _infoRow('성명', widget.reservation.passengerName),
-                  const SizedBox(height: 8),
-                  _infoRow('생년월일',
-                      FormatUtils.birth(widget.reservation.passengerBirth)),
-                  const SizedBox(height: 8),
-                  _infoRow('성별', widget.reservation.passengerGender),
+                  // _infoRow('성명', widget.reservation.passengerName),
+                  // const SizedBox(height: 8),
+                  // _infoRow('생년월일',
+                  //     FormatUtils.birth(widget.reservation.passengerBirth)),
+                  // const SizedBox(height: 8),
+                  // _infoRow('성별', widget.reservation.passengerGender),
+                  // ✅ [변경 전] 단일 탑승객
+                  // ✅ [변경 후] 탑승객 목록으로 변경
+                  ...widget.reservation.passengers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final p = entry.value;
+                    return Column(
+                      children: [
+                        if (index > 0) const Divider(height: 16),
+                        _infoRow('탑승객 ${index + 1} (${p.passengerType})', ''),
+                        const SizedBox(height: 8),
+                        _infoRow('성명', p.passengerName),
+                        const SizedBox(height: 8),
+                        _infoRow('생년월일', FormatUtils.birth(p.passengerBirth)),
+                        const SizedBox(height: 8),
+                        _infoRow('성별', p.passengerGender),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),

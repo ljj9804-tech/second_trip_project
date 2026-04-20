@@ -1,3 +1,5 @@
+import 'package:second_trip_project/airport/model/passenger_item.dart';
+
 import '../constants/airport_constants.dart';
 
 class ReservationItem {
@@ -24,9 +26,12 @@ class ReservationItem {
   final int? retPrice;            // 오는편 가격
 
   // ── 탑승객 정보 ───────────────────────────────────────────
-  final String passengerName;     // 이름
-  final String passengerBirth;    // 생년월일
-  final String passengerGender;   // 성별
+  // final String passengerName;     // 이름
+  // final String passengerBirth;    // 생년월일
+  // final String passengerGender;   // 성별
+
+  // ── 탑승객 목록 (passenger 테이블로 분리) ─────────────────
+  final List<PassengerItem> passengers;  // ✅ [변경] 단일 → 목록
 
   // ── 예약 정보 ─────────────────────────────────────────────
   final bool isRoundTrip;         // 편도/왕복
@@ -51,20 +56,29 @@ class ReservationItem {
     this.retDepPlandTime,
     this.retArrPlandTime,
     this.retPrice,
-    required this.passengerName,
-    required this.passengerBirth,
-    required this.passengerGender,
+    // required this.passengerName,
+    // required this.passengerBirth,
+    // required this.passengerGender,
+    required this.passengers,     // ✅ [변경] 탑승객 목록
     required this.isRoundTrip,
     required this.reservedAt,
     required this.status,
   });
 
   // ── 2. 총 금액 계산 ──────────────────────────────────────
+  // int get totalPrice {
+  //   if (isRoundTrip && retPrice != null) {
+  //     return depPrice + retPrice! + AirportConstants.issueFee;
+  //   }
+  //   return depPrice + AirportConstants.issueFee;
+  // }
+  // ✅ [변경 후] 탑승객 수만큼 곱하기
   int get totalPrice {
+    final count = passengers.isNotEmpty ? passengers.length : 1;
     if (isRoundTrip && retPrice != null) {
-      return depPrice + retPrice! + AirportConstants.issueFee;
+      return (depPrice + retPrice!) * count + AirportConstants.issueFee;
     }
-    return depPrice + AirportConstants.issueFee;
+    return depPrice * count + AirportConstants.issueFee;
   }
 
   // ── 3. 스프링부트 JSON → ReservationItem 변환 ────────────
@@ -87,9 +101,13 @@ class ReservationItem {
       retDepPlandTime: json['retDepPlandTime'],   // 오는편 출발 시각
       retArrPlandTime: json['retArrPlandTime'],   // 오는편 도착 시각
       retPrice:        json['retPrice'],          // 오는편 가격
-      passengerName:   json['passengerName'],     // 이름
-      passengerBirth:  json['passengerBirth'],    // 생년월일
-      passengerGender: json['passengerGender'],   // 성별
+      // passengerName:   json['passengerName'],     // 이름
+      // passengerBirth:  json['passengerBirth'],    // 생년월일
+      // passengerGender: json['passengerGender'],   // 성별
+      // ✅ [변경] 탑승객 목록 변환
+      passengers: (json['passengers'] as List<dynamic>? ?? [])
+          .map((e) => PassengerItem.fromJson(e))
+          .toList(),
       isRoundTrip:     json['isRoundTrip'] ?? false, // 편도/왕복
       reservedAt:      json['reservedAt'] ?? '', // 예약 일시
       status:          '예약완료',               // 상태
@@ -115,9 +133,11 @@ class ReservationItem {
       'retDepPlandTime': retDepPlandTime,   // 오는편 출발 시각
       'retArrPlandTime': retArrPlandTime,   // 오는편 도착 시각
       'retPrice':        retPrice,          // 오는편 가격
-      'passengerName':   passengerName,     // 이름
-      'passengerBirth':  passengerBirth,    // 생년월일
-      'passengerGender': passengerGender,   // 성별
+      // 'passengerName':   passengerName,     // 이름
+      // 'passengerBirth':  passengerBirth,    // 생년월일
+      // 'passengerGender': passengerGender,   // 성별
+      // ✅ [변경] 탑승객 목록 변환
+      'passengers':      passengers.map((e) => e.toJson()).toList(),
       'isRoundTrip':     isRoundTrip,       // 편도/왕복
       'reservedAt':      reservedAt,        // 예약 일시
     };
