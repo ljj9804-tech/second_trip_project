@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../common/constants/app_colors.dart';
+import '../../common/widget/app_base_layout.dart';
 import '../../common/widget/common_button.dart';
 import '../controller/flight_controller.dart';
 import '../model/flight_item.dart';
@@ -74,207 +75,204 @@ class _FlightListScreenState extends State<FlightListScreen> {
     return sorted;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Consumer<FlightController>(
-          builder: (_, c, __) => Text(
-            '${FlightItem.getAirportName(c.depAirportId)} → '
-                '${FlightItem.getAirportName(c.arrAirportId)}',
-          ),
+  // ── body 빌드 ─────────────────────────────────────────────
+  Widget _buildBody(FlightController controller) {
+
+    // 상태 1: 로딩 중
+    if (controller.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // 상태 2: 에러 발생
+    if (controller.errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline,
+                size: 48, color: AppColors.danger),
+            const SizedBox(height: 12),
+            Text(controller.errorMessage!),
+            const SizedBox(height: 12),
+            CommonButton(
+              text: '다시 시도',
+              onPressed: () =>
+                  context.read<FlightController>().fetchInitial(
+                    depAirportId: controller.depAirportId,
+                    arrAirportId: controller.arrAirportId,
+                    depPlandTime: controller.depPlandTime,
+                    isRoundTrip:  controller.isRoundTrip,
+                    adultCount:   controller.adultCount,
+                    childCount:   controller.childCount,
+                    infantCount:  controller.infantCount,
+                  ),
+            ),
+          ],
         ),
-      ),
-      body: Consumer<FlightController>(
-        builder: (context, controller, _) {
+      );
+    }
 
-          // 상태 1: 로딩 중
-          if (controller.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    // 상태 3: 데이터 없음
+    if (controller.items.isEmpty) {
+      return const Center(child: Text('항공편이 없습니다'));
+    }
 
-          // 상태 2: 에러 발생
-          if (controller.errorMessage != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+    final sorted = _sortedItems(controller.items);
+
+    return Column(
+      children: [
+
+        // ── 검색 조건 요약 바 ──────────────────────
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          color: AppColors.primaryLight,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 날짜
+              Row(
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: AppColors.danger),
-                  const SizedBox(height: 12),
-                  Text(controller.errorMessage!),
-                  const SizedBox(height: 12),
-                  CommonButton(
-                    text: '다시 시도',
-                    onPressed: () =>
-                        context.read<FlightController>().fetchInitial(
-                          depAirportId: controller.depAirportId,
-                          arrAirportId: controller.arrAirportId,
-                          depPlandTime: controller.depPlandTime,
-                          isRoundTrip:  controller.isRoundTrip,
-                          adultCount:   controller.adultCount,
-                          childCount:   controller.childCount,
-                          infantCount:  controller.infantCount,
-                        ),
+                  const Icon(Icons.calendar_today,
+                      size: 14, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    FormatUtils.date(controller.depPlandTime),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.primary),
                   ),
                 ],
               ),
-            );
-          }
 
-          // 상태 3: 데이터 없음
-          if (controller.items.isEmpty) {
-            return const Center(child: Text('항공편이 없습니다'));
-          }
+              // 인원 정보
+              Row(
+                children: [
+                  const Icon(Icons.person_outline,
+                      size: 14, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    FormatUtils.passenger(
+                      controller.adultCount,
+                      controller.childCount,
+                      controller.infantCount,
+                    ),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.primary),
+                  ),
+                ],
+              ),
 
-          final sorted = _sortedItems(controller.items);
-
-          return Column(
-            children: [
-
-              // ── 검색 조건 요약 바 ──────────────────────
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
-                color: AppColors.primaryLight,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // 재설정 버튼
+              GestureDetector(
+                onTap: () => _showResetModal(context, controller),
+                child: const Row(
                   children: [
-                    // 날짜
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today,
-                            size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          FormatUtils.date(controller.depPlandTime),
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.primary),
-                        ),
-                      ],
-                    ),
-
-                    // 인원 정보
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline,
-                            size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          FormatUtils.passenger(
-                            controller.adultCount,
-                            controller.childCount,
-                            controller.infantCount,
-                          ),
-                          style: const TextStyle(
-                              fontSize: 13, color: AppColors.primary),
-                        ),
-                      ],
-                    ),
-
-                    // 재설정 버튼
-                    GestureDetector(
-                      onTap: () => _showResetModal(context, controller),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.tune,
-                              size: 14, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text(
-                            '재설정',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                    Icon(Icons.tune, size: 14, color: AppColors.primary),
+                    SizedBox(width: 4),
+                    Text(
+                      '재설정',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // ── 정렬 필터 탭 (가로 스크롤) ────────────
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8),
-                child: Row(
-                  children: _sortOptions.map((option) {
-                    final isSelected = _sortType == option;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _sortType = option),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary
-                                : AppColors.backgroundGrey,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                            ),
-                          ),
-                          child: Text(
-                            option,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppColors.textPrimary,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-
-              // ── 항공편 리스트 (무한스크롤) ─────────────
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: sorted.length + 1,
-                  itemBuilder: (context, index) {
-
-                    if (index == sorted.length) {
-                      if (controller.isFetchingMore) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      if (!controller.hasMore) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: Text(
-                              '모든 항공편을 불러왔습니다 ✅',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary),
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    }
-
-                    final item = sorted[index];
-                    return _flightCard(context, item, controller);
-                  },
-                ),
-              ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+
+        // ── 정렬 필터 탭 (가로 스크롤) ────────────
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: _sortOptions.map((option) {
+              final isSelected = _sortType == option;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() => _sortType = option),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.backgroundGrey,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.border,
+                      ),
+                    ),
+                    child: Text(
+                      option,
+                      style: TextStyle(
+                        color: isSelected
+                            ? Colors.white
+                            : AppColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // ── 항공편 리스트 (무한스크롤) ─────────────
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            itemCount: sorted.length + 1,
+            itemBuilder: (context, index) {
+
+              if (index == sorted.length) {
+                if (controller.isFetchingMore) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (!controller.hasMore) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        '모든 항공편을 불러왔습니다 ✅',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }
+
+              final item = sorted[index];
+              return _flightCard(context, item, controller);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ✅ AppBaseLayout 적용
+    return Consumer<FlightController>(
+      builder: (context, controller, _) {
+        return AppBaseLayout(
+          title:
+          '${FlightItem.getAirportName(controller.depAirportId)} → '
+              '${FlightItem.getAirportName(controller.arrAirportId)}',
+          body: _buildBody(controller),
+        );
+      },
     );
   }
 
@@ -287,6 +285,9 @@ class _FlightListScreenState extends State<FlightListScreen> {
       int.parse(controller.depPlandTime.substring(4, 6)),
       int.parse(controller.depPlandTime.substring(6, 8)),
     );
+    // ✅ 왕복일 때 오는편 날짜 초기값
+    DateTime tempRetDate =
+        controller.retDate ?? tempDate.add(const Duration(days: 3));
     int tempAdult  = controller.adultCount;
     int tempChild  = controller.childCount;
     int tempInfant = controller.infantCount;
@@ -317,8 +318,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
 
                 const Text(
                   '검색 조건 변경',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 20),
@@ -347,8 +347,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
                                   itemBuilder: (_, i) => ListTile(
                                     title: Text(airports[i].value),
                                     onTap: () {
-                                      setModalState(() =>
-                                      tempDep = airports[i].key);
+                                      setModalState(
+                                              () => tempDep = airports[i].key);
                                       Navigator.pop(context);
                                     },
                                   ),
@@ -366,8 +366,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
                           child: Text(
                             FlightItem.getAirportName(tempDep),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -400,8 +399,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
                                   itemBuilder: (_, i) => ListTile(
                                     title: Text(airports[i].value),
                                     onTap: () {
-                                      setModalState(() =>
-                                      tempArr = airports[i].key);
+                                      setModalState(
+                                              () => tempArr = airports[i].key);
                                       Navigator.pop(context);
                                     },
                                   ),
@@ -419,8 +418,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
                           child: Text(
                             FlightItem.getAirportName(tempArr),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -461,13 +459,53 @@ class _FlightListScreenState extends State<FlightListScreen> {
                         const SizedBox(width: 8),
                         Text(
                           formatDisplay(tempDate),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
                 ),
+
+                // ── 오는편 날짜 선택 (왕복일 때만) ──────
+                if (controller.isRoundTrip) ...[
+                  const SizedBox(height: 16),
+                  const Text('귀환 날짜',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: tempRetDate,
+                        firstDate: tempDate,
+                        lastDate: DateTime(tempDate.year + 1),
+                      );
+                      if (picked != null) {
+                        setModalState(() => tempRetDate = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today,
+                              size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Text(
+                            formatDisplay(tempRetDate),
+                            style:
+                            const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 16),
 
@@ -499,8 +537,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
                       label: '유아',
                       count: tempInfant,
                       onMinus: () {
-                        if (tempInfant > 0)
-                          setModalState(() => tempInfant--);
+                        if (tempInfant > 0) setModalState(() => tempInfant--);
                       },
                       onPlus: () => setModalState(() => tempInfant++),
                     ),
@@ -526,6 +563,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
                       adultCount:   tempAdult,
                       childCount:   tempChild,
                       infantCount:  tempInfant,
+                      retDate: controller.isRoundTrip ? tempRetDate : null,
                     );
                   },
                 ),
@@ -693,8 +731,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
                     const Text(
                       '성인 1인 기준',
                       style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary),
+                          fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
