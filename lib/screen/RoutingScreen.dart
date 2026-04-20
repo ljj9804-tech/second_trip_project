@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:second_trip_project/car/controller/car_rent_home_controller.dart';
+import 'package:second_trip_project/car/service/car_rent_home_service.dart';
 
 // [팀원별 실제 화면 Import]
 // 렌터카 파트 (태흔님)
 import '../airport/screen/my_reservation_screen.dart';
 import '../airport/screen/search_screen.dart';
+import '../car/controller/calendar_controller.dart';
+import '../car/controller/car_rent_list_controller.dart';
 import '../car/screen/car_rent_home_screen.dart';
-import '../car/screen/table_calendar_screen.dart';
+import '../car/screen/calendar_screen.dart';
+import '../car/service/car_rent_list_service.dart';
 
 // 숙소 파트 (재욱님)
 import '../loging/screens/list/accommodation_list_screen.dart';
@@ -59,7 +65,7 @@ class RoutingScreen extends StatelessWidget {
         '/signup': (context) => const SignUpScreen(),
         '/logout_mypage': (context) => const LogoutMyPageScreen(),
         '/favorite': (context) => const WishlistScreen(), // 찜 목록 경로 추가
-        '/mypage': (context) => const MyPageScreen(userName: '사용자', userEmail: '', userPhone: '',),
+        '/mypage': (context) => const MyPageScreen(userName: '사용자', userEmail: '', userPhone: '', userRole: '',),
         '/edit_profile': (context) => const EditProfileScreen(name: '', phone: ''),
 
         '/change_password': (context) => const ChangePasswordScreen(),
@@ -67,8 +73,14 @@ class RoutingScreen extends StatelessWidget {
         '/inquiry': (context) => const InquiryScreen(),
 
         // [렌터카 - 태흔님]
-        '/car_rent_home': (context) => const CarRentHomeScreen(),
-        '/car_calendar': (context) => const TableCalendarScreen(),
+        '/car_rent_home': (context) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => CarRentHomeController()),
+            ChangeNotifierProvider(create: (_) => CalendarController()),
+            ChangeNotifierProvider(create: (_) => CarRentListController(service: CarRentListService())),
+          ],
+          child: const CarRentHomeScreen(),
+        ),
 
         // 검색 화면 경로 등록
         '/search': (context) => const TotalSearchScreen(),

@@ -1,10 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
-// Future.delayed를 사용하기 위해 dart:async를 임포트합니다.
 import 'dart:async';
-
-import 'MainScreen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:second_trip_project/constants.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,15 +14,35 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // 2초 후에 메인 화면(예: HomeScreen)으로 이동합니다.
-    Timer(const Duration(seconds: 2), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          // 'HomeScreen()' 부분은 실제 프로젝트의 메인 화면 위젯으로 변경해야 합니다.
-          builder: (context) => const MainScreen(),
-        ),
-      );
-    });
+    Timer(const Duration(seconds: 2), () => _checkToken());
+  }
+
+  Future<void> _checkToken() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // TODO: 자동 로그인 사용 시 아래 주석 해제
+    // final refreshToken = prefs.getString('refreshToken');
+    // if (refreshToken != null) {
+    //   try {
+    //     final response = await dio.post(
+    //       '/refreshToken',
+    //       data: {'refreshToken': refreshToken},
+    //     );
+    //     final newAccessToken = response.data['accessToken'];
+    //     await prefs.setString('accessToken', newAccessToken);
+    //   } catch (e) {
+    //     await prefs.clear();
+    //   }
+    // }
+
+    // 자동 로그인 미사용 시 매번 토큰 초기화
+    await prefs.clear();
+    _goToMain();
+  }
+
+  void _goToMain() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/main');
   }
 
   @override

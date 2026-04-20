@@ -1,4 +1,6 @@
-class RentalModel {
+import '../util/format_util.dart';
+
+class CarRentalReservationDTO {
   final int id;
   final int carId;
   final String carName;
@@ -7,7 +9,7 @@ class RentalModel {
   final int totalPrice;
   final String status;
 
-  RentalModel({
+  CarRentalReservationDTO({
     required this.id,
     required this.carId,
     required this.carName,
@@ -17,26 +19,15 @@ class RentalModel {
     required this.status,
   });
 
-  factory RentalModel.fromJson(Map<String, dynamic> json) {
-    return RentalModel(
+  factory CarRentalReservationDTO.fromJson(Map<String, dynamic> json) {
+    return CarRentalReservationDTO(
       id: json['id'],
       carId: json['carId'],
       carName: json['carName'] ?? '',
-      startDate: _parseDate(json['startDate']),
-      endDate: _parseDate(json['endDate']),
+      startDate: formatDate(DateTime.parse(json['startDate'].toString()), showWeekDay: false, separator: '-'),
+      endDate: formatDate(DateTime.parse(json['endDate'].toString()), showWeekDay: false, separator: '-'),
       totalPrice: json['totalPrice'] ?? 0,
       status: json['status'],
     );
-  }
-
-  static String _parseDate(dynamic value) {
-    if (value is String) return value;
-    if (value is List) {
-      final y = value[0];
-      final m = value[1].toString().padLeft(2, '0');
-      final d = value[2].toString().padLeft(2, '0');
-      return '$y-$m-$d';
-    }
-    return '';
   }
 }

@@ -9,8 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:second_trip_project/screen/RoutingScreen.dart';
 
 import 'package:second_trip_project/car/controller/calendar_controller.dart';
-import 'package:second_trip_project/car/controller/rent_comp_controller.dart';
-import 'package:second_trip_project/car/controller/rental_controller.dart';
+import 'package:second_trip_project/car/controller/car_reservation_controller.dart';
+
+// 숙소 파트 import
 import 'package:second_trip_project/providers/accommodation_providers.dart';
 import 'airport/controller/flight_controller.dart';
 import 'airport/controller/reservation_controller.dart';
@@ -36,12 +37,9 @@ Future<void> main() async {
         providers: [
           ChangeNotifierProvider<PackageController>(
               create: (_) => PackageController()),
-          ChangeNotifierProvider<RentCompController>(
-              create: (_) => RentCompController()),
           ChangeNotifierProvider<CalendarController>(
               create: (_) => CalendarController()),
-          ChangeNotifierProvider<RentalController>(
-              create: (_) => RentalController()),
+          ChangeNotifierProvider<CarReservationController>(create: (_) => CarReservationController()),
           ChangeNotifierProvider<FlightController>(
               create: (_) => FlightController()),
           ChangeNotifierProvider<ReservationController>(

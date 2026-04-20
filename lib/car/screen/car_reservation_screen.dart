@@ -1,37 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../controller/calendar_controller.dart';
-import '../controller/rental_controller.dart';
-import '../model/car_dto.dart';
+import '../util/format_util.dart';
+import '../controller/car_reservation_controller.dart';
+import '../model/company_car_dto.dart';
+import '../model/car_search_cursor_response.dart';
 
 class CarReservationScreen extends StatelessWidget {
-  final CarDTO car;
+  final CarSearchCursorResponseDTO car;
+  final CompanyCarDTO companyCarDTO;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String? startTime;
+  final String? endTime;
 
-  const CarReservationScreen({super.key, required this.car});
+  const CarReservationScreen({
+    super.key,
+    required this.car,
+    required this.companyCarDTO,
+    required this.startDate,
+    required this.endDate,
+    this.startTime,
+    this.endTime,
+  });
 
-  String _formatDate(DateTime date) {
-    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
-  }
-
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (m) => '${m[1]},',
-    );
-  }
-
-  String _toApiDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  String _toApiDate(DateTime date, String? time) {
+    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final parsed = formatTime(time);
+    final timeStr = parsed != null
+        ? '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}:00'
+        : '00:00:00';
+    return '${dateStr}T$timeStr';
   }
 
   @override
   Widget build(BuildContext context) {
-    final calendar = context.read<CalendarController>();
-    final start = calendar.rangeStart!;
-    final end = calendar.rangeEnd!;
-    final days = end.difference(start).inDays;
-    final totalPrice = car.dailyPrice * days;
+    final days = endDate.difference(startDate).inDays;
+    final totalPrice = companyCarDTO.dailyPrice * days;
 
     return Scaffold(
       appBar: AppBar(title: const Text('예약 확인')),
@@ -53,12 +58,12 @@ class CarReservationScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(car.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(car.carName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('${car.type} · ${car.seats}인승 · ${car.fuel} · ${car.year}년',
+                  Text('${car.type} · ${car.seats}인승 · ${car.fuel} · ${companyCarDTO.year}년',
                       style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                   const SizedBox(height: 4),
-                  Text(car.companyName, style: const TextStyle(fontSize: 14)),
+                  Text(companyCarDTO.companyName, style: const TextStyle(fontSize: 14)),
                 ],
               ),
             ),
@@ -82,9 +87,9 @@ class CarReservationScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('인수일', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      Text(_formatDate(start), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                      if (calendar.startTime != null)
-                        Text(calendar.startTime!, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                      Text(formatDate(startDate, showWeekDay: false), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      if (startTime != null)
+                        Text(startTime!, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                     ],
                   ),
                   const Icon(Icons.arrow_forward, color: Colors.grey),
@@ -92,9 +97,9 @@ class CarReservationScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       const Text('반납일', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      Text(_formatDate(end), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                      if (calendar.endTime != null)
-                        Text(calendar.endTime!, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                      Text(formatDate(endDate, showWeekDay: false), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      if (endTime != null)
+                        Text(endTime!, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                     ],
                   ),
                 ],
@@ -114,21 +119,16 @@ class CarReservationScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('${_formatPrice(car.dailyPrice)}원 × $days일'),
-                      Text('${_formatPrice(totalPrice)}원'),
-                    ],
-                  ),
+                  Text('${formatPrice(companyCarDTO.dailyPrice)}원 × $days일'),
                   const Divider(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('총 금액', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       Text(
-                        '${_formatPrice(totalPrice)}원',
+                        '${formatPrice(totalPrice)}원',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF004680)),
                       ),
                     ],
@@ -140,7 +140,7 @@ class CarReservationScreen extends StatelessWidget {
             const Spacer(),
 
             // 예약하기 버튼
-            Consumer<RentalController>(
+            Consumer<CarReservationController>(
               builder: (context, rentalController, _) {
                 return SizedBox(
                   width: double.infinity,
@@ -149,17 +149,19 @@ class CarReservationScreen extends StatelessWidget {
                     onPressed: rentalController.isLoading
                         ? null
                         : () async {
-                            final result = await rentalController.createRental(
-                              car.id,
-                              _toApiDate(start),
-                              _toApiDate(end),
+                            final rentalResult = await rentalController.createRental(
+                              companyCarDTO.carId,
+                              _toApiDate(startDate, startTime),
+                              _toApiDate(endDate, endTime),
                             );
                             if (!context.mounted) return;
-                            if (result != null) {
+                            if (rentalResult != null) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('예약이 완료되었습니다.')),
                               );
-                              Navigator.pop(context);
+                              Navigator.pushReplacementNamed(context, "/main");
+                            } else if (rentalController.errorMessage == '로그인이 필요합니다.') {
+                              Navigator.pushNamed(context, '/login');
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(rentalController.errorMessage ?? '예약 실패')),
