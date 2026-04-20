@@ -12,12 +12,14 @@ import '../controller/reservation_controller.dart';
 import '../model/reservation_item.dart';
 import '../utils/format_utils.dart';
 
-enum BookingType { flight, rental, hotel }
+// ✅ package 추가
+enum BookingType { flight, rental, hotel, package }
 
 class MyReservationScreen extends StatefulWidget {
   final BookingType type;
+  final bool isModal;
 
-  const MyReservationScreen({super.key, this.type = BookingType.flight});
+  const MyReservationScreen({super.key, this.type = BookingType.flight,this.isModal = false,});
 
   @override
   State<MyReservationScreen> createState() => _MyReservationScreenState();
@@ -26,29 +28,22 @@ class MyReservationScreen extends StatefulWidget {
 class _MyReservationScreenState extends State<MyReservationScreen> {
   final _scrollController = ScrollController();
 
-  // ✅ [변경 전] _tempMemberId
-  // static const String _tempMemberId = 'user1';
-  // ✅ [변경 후] _tempMid
-  // ✅ [추후 로그인 연동] null → loginController.mid 로 교체
-  // ✅ [변경 전] static const String _tempMid = 'user1';
-  // ✅ [변경 후] SharedPreferences 에서 가져오기
   String _mid = '';
-  static const String _tempMid = 'user1';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      _mid = prefs.getString('userMid') ?? '';
       // ✅ [변경 전] _tempMid 하드코딩
       // ✅ [변경 후] SharedPreferences 에서 가져오기
       _mid = await SecureStorageHelper().getUserMid() ?? '';
       debugPrint('[MyReservationScreen] 예약 목록 조회 시작 → mid: $_mid');
-      context.read<ReservationController>()
-          .fetchReservations(_mid);
 
       switch (widget.type) {
         case BookingType.flight:
-          context.read<ReservationController>().fetchReservations(_tempMid);
+          context.read<ReservationController>().fetchReservations(_mid);
           break;
         case BookingType.rental:
           context.read<CarReservationController>().fetchMyRentals();
@@ -60,6 +55,10 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
           });
           break;
         case BookingType.hotel:
+        // TODO: 숙소 담당자 - 숙소 예약 목록 API 연결
+          break;
+        case BookingType.package:
+        // TODO: 패키지 담당자 - 패키지 예약 목록 API 연결
           break;
       }
     });
@@ -73,9 +72,10 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
 
   String get _title {
     switch (widget.type) {
-      case BookingType.flight: return '항공권 예약 내역';
-      case BookingType.rental: return '렌터카 예약 내역';
-      case BookingType.hotel:  return '숙소 예약 내역';
+      case BookingType.flight:  return '항공권 예약 내역';
+      case BookingType.rental:  return '렌터카 예약 내역';
+      case BookingType.hotel:   return '숙소 예약 내역';
+      case BookingType.package: return '패키지 예약 내역';
     }
   }
 
@@ -83,10 +83,20 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
   Widget build(BuildContext context) {
     return AppBaseLayout(
       title: _title,
+      showBackButton: !widget.isModal,  // ✅ leading 대신 이걸로
+      actions: widget.isModal
+          ? [
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ]
+          : null,
       body: switch (widget.type) {
-        BookingType.flight => _flightBody(),
-        BookingType.rental => _rentalBody(),
-        BookingType.hotel  => _hotelBody(),
+        BookingType.flight  => _flightBody(),
+        BookingType.rental  => _rentalBody(),
+        BookingType.hotel   => _hotelBody(),
+        BookingType.package => _packageBody(),
       },
     );
   }
@@ -140,14 +150,17 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
 
   Widget _flightCard(BuildContext context, ReservationItem item, int index, ReservationController controller) {
     final isCancelled = item.status == '취소';
-    final isPast = _isPastFlight(item.depPlandTime);
+    final isPast      = _isPastFlight(item.depPlandTime);
+    final isGrey      = isCancelled || isPast;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isPast ? Colors.grey.shade100 : null,
+        color: isGrey ? Colors.grey.shade100 : null,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isPast ? Colors.grey.shade300 : AppColors.border),
+        border: Border.all(
+          color: isGrey ? Colors.grey.shade300 : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,19 +168,23 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isCancelled ? AppColors.backgroundGrey : AppColors.primaryLight,
+              color: isGrey ? AppColors.backgroundGrey : AppColors.primaryLight,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(item.status,
-                    style: TextStyle(
-                      color: isCancelled ? AppColors.textSecondary : AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    )),
-                Text('예약일: ${item.reservedAt.substring(0, 10)}',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(
+                  isCancelled ? '취소' : isPast ? '지난예약' : item.status,
+                  style: TextStyle(
+                    color: isGrey ? AppColors.textSecondary : AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '예약일: ${item.reservedAt.substring(0, 10)}',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -184,6 +201,7 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
                   depAirport: item.depAirportNm ?? '-',
                   arrAirport: item.arrAirportNm ?? '-',
                   airline: '${item.airlineNm ?? '-'} ${item.flightNo ?? '-'}',
+                  isGrey: isGrey,
                 ),
                 if (item.isRoundTrip && item.retDepPlandTime != null) ...[
                   const Divider(height: 20),
@@ -195,16 +213,27 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
                     depAirport: item.arrAirportNm ?? '-',
                     arrAirport: item.depAirportNm ?? '-',
                     airline: '${item.retAirlineNm ?? '-'} ${item.retFlightNo ?? '-'}',
+                    isGrey: isGrey,
                   ),
                 ],
                 const Divider(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('탑승객: ${item.passengerName}',
-                        style: const TextStyle(color: AppColors.textSecondary)),
-                    Text(FormatUtils.price(item.totalPrice),
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    Text(
+                      '탑승객: ${item.passengerSummary}',
+                      style: TextStyle(
+                        color: isGrey ? AppColors.textSecondary : AppColors.textPrimary,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      FormatUtils.price(item.totalPrice),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isGrey ? AppColors.textSecondary : AppColors.primary,
+                      ),
+                    ),
                   ],
                 ),
                 if (!isCancelled && !isPast) ...[
@@ -213,7 +242,8 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
                     text: '예약 취소',
                     isOutlined: true,
                     color: AppColors.danger,
-                    onPressed: () => _showFlightCancelDialog(context, index, controller),
+                    onPressed: () =>
+                        _showFlightCancelDialog(context, index, controller),
                   ),
                 ],
               ],
@@ -232,14 +262,22 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
     required String depAirport,
     required String arrAirport,
     required String airline,
+    bool isGrey = false,
   }) {
+    final labelColor = isGrey ? AppColors.textSecondary : AppColors.primary;
+    final timeStyle = TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+      color: isGrey ? AppColors.textSecondary : AppColors.textPrimary,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+            Text(label, style: TextStyle(color: labelColor, fontWeight: FontWeight.bold)),
             Text(date, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
           ],
         ),
@@ -248,12 +286,14 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(depTime, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(depTime, style: timeStyle),
               Text(depAirport, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             ]),
-            const Icon(Icons.airplanemode_active, color: AppColors.primary, size: 20),
+            Icon(Icons.airplanemode_active,
+                color: isGrey ? AppColors.textSecondary : AppColors.primary,
+                size: 20),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(arrTime, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(arrTime, style: timeStyle),
               Text(arrAirport, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             ]),
           ],
@@ -271,7 +311,10 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
         title: const Text('예약 취소'),
         content: const Text('정말 취소하시겠습니까?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('아니오')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('아니오'),
+          ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
@@ -306,7 +349,7 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
         return ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.all(16),
-          itemCount: controller.myRentals.length + (controller.hasNext ? 1 : 0),  //+ 1는 쉬머를 붙일 자리
+          itemCount: controller.myRentals.length + (controller.hasNext ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == controller.myRentals.length) {
               return const _ShimmerRentalCard();
@@ -320,7 +363,8 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
 
   bool _isPastRental(String endDate) {
     try {
-      return DateTime.parse(formatDateString(endDate, '.', '-')).isBefore(DateTime.now());
+      return DateTime.parse(formatDateString(endDate, '.', '-'))
+          .isBefore(DateTime.now());
     } catch (_) {
       return false;
     }
@@ -336,7 +380,6 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
 
   Widget _rentalCard(BuildContext context, CarRentalReservationDTO item, CarReservationController controller) {
     final isPast = _isPastRental(item.endDate);
-    debugPrint('[렌터카] endDate=${item.endDate} isPast=$isPast');
     final statusLabel = isPast ? '지난예약' : _rentalStatusLabel(item.status);
     final color = isPast ? Colors.grey : Colors.orange[700]!;
 
@@ -416,7 +459,10 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
         title: const Text('예약 취소'),
         content: const Text('정말 취소하시겠습니까?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('아니오')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('아니오'),
+          ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
@@ -430,10 +476,19 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
   }
 
   // ─────────────────────────────────────────────
-  // 숙소
+  // 숙소 (임시)
+  // TODO: 숙소 담당자 - 실제 숙소 예약 내역으로 교체
   // ─────────────────────────────────────────────
   Widget _hotelBody() {
     return _emptyView('숙소 예약 내역', '준비 중입니다.');
+  }
+
+  // ─────────────────────────────────────────────
+  // 패키지 (임시)
+  // TODO: 패키지 담당자 - 실제 패키지 예약 내역으로 교체
+  // ─────────────────────────────────────────────
+  Widget _packageBody() {
+    return _emptyView('패키지 예약 내역', '준비 중입니다.');
   }
 
   // ─────────────────────────────────────────────
@@ -447,7 +502,8 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
           Text(title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
-          Text(subtitle, style: const TextStyle(color: AppColors.textSecondary)),
+          Text(subtitle,
+              style: const TextStyle(color: AppColors.textSecondary)),
         ],
       ),
     );

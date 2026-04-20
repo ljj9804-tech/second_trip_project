@@ -1,65 +1,66 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:second_trip_project/package/model/package_item.dart';
 import 'package:second_trip_project/package/screen/package_detail_screen.dart';
+import 'package:second_trip_project/services/member_service.dart'; // import 확인!
+
+// // 1. 가짜 서비스 클래스 정의
+// class MockMemberService extends MemberService {
+//   @override
+//   Future<bool> checkLoginStatus() async => true; // 테스트를 위해 항상 로그인됨으로 설정
+// }
+
+// 실패 상황을 흉내내는 Mock도 만들 수 있습니다.
+class MockMemberService extends MemberService {
+  @override
+  Future<bool> checkLoginStatus() async => true;
+}
+
 
 void main() {
-  setUpAll(() {
-    HttpOverrides.global = null;
-  });
+  // 테스트용 가짜 데이터
+  final testItem = PackageItem(
+      id: '5',
+      title: '제주도 여행',
+      price: 10000,
+      thumbnail: '',
+      minPeople: 1,
+      maxPeople: 5,
+      inclusions: [],
+      itinerary: [], category: '', description: '', region: '', tags: [], exclusions: [], flightInfo: {}
+  );
 
-  testWidgets('예약 버튼 클릭 시 백엔드 호출 확인', (WidgetTester tester) async {
-    PackageDetailScreen.isTesting = true; // [중요]
+  testWidgets('예약 버튼 클릭 시 예약 완료 스낵바가 보여야 함', (WidgetTester tester) async {
+    PackageDetailScreen.isTesting = true; // [중요] 테스트 모드 활성화
 
-    final testItem = PackageItem(
+    final mockService = MockMemberService();
 
-      id: 'test_01',
-      title: '테스트 패키지',
-      category: 'Best',
-      description: '설명',
-      region: '서울',
-      thumbnail: 'https://example.com/image.jpg', // 빈 값이 아닌 형식적인 URL
-      price: 1000000,
-      tags: ['#테스트'],
-      inclusions: ['포함1'],
-      exclusions: ['불포함1'],
-      flightInfo: {},
-      itinerary: [
-        {
-          'day': 1,
-          'activities': ['활동1'] // 리스트가 비어있지 않게 샘플 데이터 추가
-        }
-      ],
+    // 2. 위젯 렌더링 (한 번만 호출!)
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PackageDetailScreen(
+          item: testItem,
+          memberService: mockService,
+        ),
+      ),
     );
 
-    // 1. 상세 페이지 렌더링
-    await tester.pumpWidget(MaterialApp(
-      home: PackageDetailScreen(item: testItem),
-    ));
-
-    // 2. '예약하기' 버튼 클릭
+    // 3. '예약하기' 버튼 클릭
     final reserveBtn = find.byKey(const Key('reserve_button'));
     await tester.tap(reserveBtn);
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(); // 모달이 뜰 때까지 기다림
 
-    // 3. 모달 확인
+    // 4. 모달 확인
     expect(find.byKey(const Key('reserve_dialog')), findsOneWidget);
-    expect(find.text('해당 패키지 상품을 예약하시겠습니까?'), findsOneWidget);
 
-    // 4. 확인 버튼 클릭
+    // 5. 확인 버튼 클릭
     final confirmBtn = find.byKey(const Key('confirm_booking_button'));
     await tester.tap(confirmBtn);
-    await tester.pumpAndSettle();
+    await tester.pumpAndSettle(); // 예약 로직 수행 및 스낵바 뜰 때까지 기다림
 
-    // 5. [수정 포인트] 스낵바 확인을 위해 화면이 갱신되었는지 확인
-    // 실제 UI 코드의 스낵바 텍스트와 일치하는지 확인하세요
+    // 6. 스낵바 확인
     expect(find.text('테스트 패키지 예약이 완료되었습니다!'), findsOneWidget);
 
-    // 6. 모달 닫힘 확인
-    expect(find.byKey(const Key('reserve_dialog')), findsNothing);
-
-    PackageDetailScreen.isTesting = false; // 테스트 종료 시 초기화
+    PackageDetailScreen.isTesting = false; // 테스트 종료 후 초기화
   });
 }

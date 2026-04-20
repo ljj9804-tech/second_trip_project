@@ -58,7 +58,7 @@ class FormatUtils {
         '${birth.substring(6, 8)}';
   }
 
-  // ✅ 추가 - 인원 표시 포맷
+  // ── 인원 표시 포맷 ────────────────────────────────────
   // (성인 1, 소아 0, 유아 0 → '성인 1, 전체')
   // (성인 2, 소아 1, 유아 0 → '성인 2, 소아 1, 전체')
   static String passenger(int adult, int child, int infant) {
@@ -67,5 +67,29 @@ class FormatUtils {
     if (infant > 0) result += ', 유아 $infant';
     result += ', 전체';
     return result;
+  }
+
+  // ── 탑승객 유형별 가격 계산 ──────────────────────────
+  // 성인 100%, 소아 75%, 유아 10%
+  static int passengerPrice(int basePrice, String passengerType) {
+    if (passengerType == '소아') return (basePrice * 0.75).round();
+    if (passengerType == '유아') return (basePrice * 0.1).round();
+    return basePrice; // 성인
+  }
+
+  // ── 전체 탑승객 총 금액 계산 ─────────────────────────
+  // passengerTypes: 탑승객 유형 목록 (예: ['성인', '소아', '유아'])
+  static int totalPassengerPrice({
+    required int depPrice,
+    int? retPrice,
+    required List<String> passengerTypes,
+    int issueFee = 1000,
+  }) {
+    int total = issueFee;
+    for (final type in passengerTypes) {
+      total += passengerPrice(depPrice, type);
+      if (retPrice != null) total += passengerPrice(retPrice, type);
+    }
+    return total;
   }
 }

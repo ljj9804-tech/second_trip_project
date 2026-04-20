@@ -9,7 +9,7 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
-  final Color classicBlue = const Color(0xFF004680);
+  final Color classicBlue = const Color(0xFFF7323F);
 
   // ⭐ 실시간 삭제 반영을 위해 데이터를 State 안으로 이동!
   List<Map<String, dynamic>> wishItems = [

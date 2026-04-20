@@ -11,13 +11,15 @@ import 'EditProfileScreen.dart';
 class MyPageScreen extends StatefulWidget {
   final String userName;
   final String userEmail;
-  final String userPhone; // ⭐ 1. 진짜 전화번호를 받을 변수 추가
+  final String userPhone;
+  final String userRole;
 
   const MyPageScreen({
     super.key,
     required this.userName,
     required this.userEmail,
-    required this.userPhone, // ⭐ 2. 생성자에 추가
+    required this.userPhone,
+    required this.userRole,
   });
 
   @override
@@ -25,26 +27,25 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
-  final Color classicBlue = const Color(0xFF2C3E50); // 테마에 맞춘 컬러 수정
-
+  final Color classicBlue = const Color(0xFF2C3E50);
   final MemberService _memberService = MemberService();
 
   late String _userName;
   late String _userEmail;
-  late String _userPhone; // ⭐ 3. 하드코딩 삭제하고 late로 선언
+  late String _userPhone;
+  late String _userRole;
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    // ⭐ 4. 부모 위젯(MyPageScreen)으로부터 받은 진짜 정보들로 초기화
     _userName = widget.userName;
     _userEmail = widget.userEmail;
     _userPhone = widget.userPhone;
+    _userRole = widget.userRole;
   }
 
-  // ⭐ 로그아웃 확인 다이얼로그
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -76,7 +77,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  // 사진 가져오는 함수
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: source, imageQuality: 80);
@@ -90,7 +90,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  // 프로필 수정 바텀 시트
   void _showProfileMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -179,13 +178,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_userName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          if (_userRole == "ADMIN")
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF7323F),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                "ADMIN",
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Text(_userEmail, style: TextStyle(color: Colors.grey[600])),
                     ],
                   ),
                   const Spacer(),
-                  // ⭐ 수정 버튼: 이제 실제 _userPhone을 넘겨줌
                   IconButton(
                     icon: const Icon(CupertinoIcons.settings, color: Colors.grey),
                     onPressed: () async {
@@ -194,12 +210,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         MaterialPageRoute(
                           builder: (context) => EditProfileScreen(
                             name: _userName,
-                            phone: _userPhone, // 진짜 번호 전달!
+                            phone: _userPhone,
                             image: _image,
                           ),
                         ),
                       );
-                      // 수정 완료 후 돌아왔을 때 화면 갱신
                       if (result != null && result is Map<String, dynamic>) {
                         setState(() {
                           _userName = result['name'] ?? _userName;
@@ -221,23 +236,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildStatItem('내 예약', '3', onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const MyBookingScreen()));
-                  }),
+                  _buildStatItem('내 예약', '3', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyBookingScreen()))),
                   _buildStatLine(),
-                  _buildStatItem('내 리뷰', '12', onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const MyReviewScreen()));
-                  }),
+                  _buildStatItem('내 리뷰', '12', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyReviewScreen()))),
                   _buildStatLine(),
-                  _buildStatItem('찜 목록', '25', onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const WishlistScreen()));
-                  }),
+                  _buildStatItem('찜 목록', '25', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WishlistScreen()))),
                 ],
               ),
             ),
             const SizedBox(height: 12),
 
-            // 3. 메뉴 리스트 섹션
+            // 3. 메뉴 리스트 섹션 (일반 메뉴)
             Container(
               color: Colors.white,
               child: Column(
@@ -245,11 +254,43 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildMenuItem(CupertinoIcons.doc_text, '내 게시글 관리', onTap: () => Navigator.pushNamed(context, '/my_posts')),
                   _buildMenuItem(CupertinoIcons.chat_bubble_2, '1:1 문의 내역', onTap: () => Navigator.pushNamed(context, '/inquiry')),
                   _buildMenuItem(CupertinoIcons.info_circle, '고객센터', onTap: () {}),
-                  _buildMenuItem(CupertinoIcons.square_arrow_right, '로그아웃', isLast: true, textColor: Colors.redAccent, onTap: () => _showLogoutDialog(context)),
                   _buildMenuItem(CupertinoIcons.bell, '공지사항', onTap: () => Navigator.pushNamed(context, '/notice')),
+                  _buildMenuItem(CupertinoIcons.square_arrow_right, '로그아웃', isLast: true, textColor: Colors.redAccent, onTap: () => _showLogoutDialog(context)),
                 ],
               ),
             ),
+
+            // ⭐ [수정] 관리자 전용 메뉴 (아이콘 오타 수정)
+            if (_userRole == "ADMIN") ...[
+              const SizedBox(height: 12),
+              Container(
+                color: Colors.white,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(left: 16, top: 16, bottom: 8),
+                      child: Text(
+                          "관리자 전용 설정",
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFF7323F), fontSize: 14)
+                      ),
+                    ),
+                    _buildMenuItem(
+                        CupertinoIcons.speaker_2_fill,
+                        '공지사항 등록 및 관리',
+                        onTap: () => Navigator.pushNamed(context, '/admin_notice_write')
+                    ),
+                    _buildMenuItem(
+                        CupertinoIcons.chat_bubble_2_fill,
+                        '문의사항 답변 등록',
+                        isLast: true,
+                        onTap: () => Navigator.pushNamed(context, '/admin_inquiry_reply')
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 30),
           ],
         ),
       ),

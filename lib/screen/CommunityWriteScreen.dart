@@ -53,7 +53,7 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
               // ⭐ 2. 데이터를 인자로 실어서 이전 화면으로 돌아갑니다.
               Navigator.pop(context, newPost);
             },
-            child: const Text('등록', style: TextStyle(color: Color(0xFF004680), fontWeight: FontWeight.bold, fontSize: 16)),
+            child: const Text('등록', style: TextStyle(color: Color(0xFFF7323F), fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ],
       ),

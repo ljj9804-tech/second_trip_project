@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/airport_constants.dart';
@@ -7,9 +8,11 @@ import '../../common/widget/app_base_layout.dart';
 import '../../common/widget/common_button.dart';
 import '../controller/flight_controller.dart';
 import '../controller/reservation_controller.dart';
+import '../model/passenger_item.dart';
 import '../model/reservation_item.dart';
 import '../utils/format_utils.dart';
 import '../widget/flight_summary_card.dart';
+import '../../services/member_service.dart';
 import 'reservation_confirm_screen.dart';
 
 class ReservationScreen extends StatefulWidget {
@@ -21,58 +24,393 @@ class ReservationScreen extends StatefulWidget {
 
 class _ReservationScreenState extends State<ReservationScreen> {
 
-  // ── 탑승객 입력 컨트롤러 ──────────────────────────────────
-  final _formKey             = GlobalKey<FormState>();
-  // final _lastNameController  = TextEditingController(text: '홍');       // ✅ [테스트용]
-  // final _firstNameController = TextEditingController(text: '길동');     // ✅ [테스트용]
-  // final _birthController     = TextEditingController(text: '19990101'); // ✅ [테스트용]
-  final _lastNameController  = TextEditingController();
-  final _firstNameController = TextEditingController();
-  final _birthController     = TextEditingController();
-  String _selectedNation     = '대한민국';
-  String _selectedGender     = '남성';
-  bool   _isLoading          = false;
+  // ── 로딩 상태 ─────────────────────────────────────────────
+  bool _isLoading = false;
 
-  final List<String> _nations = ['대한민국', '미국', '일본', '중국', '기타'];
-  final List<String> _genders = ['남성', '여성'];
+  // ── 예약자 정보 (로그인 정보 자동입력) ───────────────────
+  String _bookerName  = '';
+  String _bookerEmail = '';
+  String _bookerPhone = '';
 
-  // ✅ [추가] initState
+  // ── 탑승객 목록 ───────────────────────────────────────────
+  final List<PassengerItem> _passengers = [];
+
+  // ── 인원 정보 (검색 화면에서 선택한 인원) ────────────────
+  int _adultCount  = 1;
+  int _childCount  = 0;
+  int _infantCount = 0;
+  int get _totalCount => _adultCount + _childCount + _infantCount;
+
   @override
   void initState() {
     super.initState();
-    //  화면이 처음 열릴 때 자동으로 호출되는 함수야.
-    // _loadUserInfo() 를 여기서 호출해서 화면 열리자마자 유저 정보 가져오게 해!
-    _loadUserInfo(); // 화면 열릴 때 자동으로 실행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserInfo();
+    });
   }
 
-// ✅ [추가] 로그인 정보 자동입력
+  // ── 로그인 정보 자동입력 ──────────────────────────────────
   Future<void> _loadUserInfo() async {
-    // SharedPreferences 에서 저장된 이름 꺼내기
-    final prefs = await SharedPreferences.getInstance();
-    final userName = prefs.getString('userName') ?? '';
-    if (userName.isNotEmpty && userName.length >= 2) {
-      setState(() {
-        _lastNameController.text  = userName.substring(0, 1); // 첫 글자 = 성
-        _firstNameController.text = userName.substring(1);    // 나머지 = 이름
-      });
-    }
+    final controller = context.read<FlightController>();
+    final memberService = MemberService();
+    final userInfo = await memberService.getUserInfo();
+
+    setState(() {
+      _bookerName  = userInfo['name']  ?? '';
+      _bookerEmail = userInfo['email'] ?? '';
+      _bookerPhone = userInfo['phone'] ?? '';
+      _adultCount  = controller.adultCount;
+      _childCount  = controller.childCount;
+      _infantCount = controller.infantCount;
+    });
   }
 
+  // ── 탑승객 추가/수정 바텀시트 ────────────────────────────
+  void _showAddPassengerSheet({int? editIndex}) {
 
-  @override
-  void dispose() {
-    _lastNameController.dispose();
-    _firstNameController.dispose();
-    _birthController.dispose();
-    super.dispose();
+    final adultAdded  = _passengers.where((p) => p.passengerType == '성인').length;
+    final childAdded  = _passengers.where((p) => p.passengerType == '소아').length;
+    final infantAdded = _passengers.where((p) => p.passengerType == '유아').length;
+
+    String selectedType = editIndex != null
+        ? _passengers[editIndex].passengerType
+        : (_adultCount > adultAdded ? '성인'
+        : _childCount > childAdded ? '소아' : '유아');
+
+    final lastNameCtrl = TextEditingController(
+        text: editIndex != null
+            ? _passengers[editIndex].passengerName.split(' ').first
+            : '');
+    final firstNameCtrl = TextEditingController(
+        text: editIndex != null && _passengers[editIndex].passengerName.contains(' ')
+            ? _passengers[editIndex].passengerName.split(' ').last
+            : '');
+    final birthCtrl = TextEditingController(
+        text: editIndex != null ? _passengers[editIndex].passengerBirth : '');
+    String selectedGender = editIndex != null
+        ? _passengers[editIndex].passengerGender
+        : '남성';
+
+    final formKey = GlobalKey<FormState>();
+    bool sameAsBooker = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 16, right: 16, top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+
+                    // ── 헤더 ───────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          editIndex != null ? '탑승객 수정' : '탑승객 추가하기',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // ── 안내 문구 ──────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        '탑승객 정보는 반드시 여권 정보와 동일해야 해요!',
+                        style: TextStyle(fontSize: 12, color: AppColors.primary),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ── 예약자와 동일 체크박스 (성인 추가 시만) ──
+                    if (selectedType == '성인' && editIndex == null) ...[
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          '예약자와 동일',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        value: sameAsBooker,
+                        activeColor: AppColors.primary,
+                        onChanged: (checked) {
+                          setModalState(() {
+                            sameAsBooker = checked ?? false;
+                            if (sameAsBooker) {
+                              lastNameCtrl.text  = _bookerName.isNotEmpty
+                                  ? _bookerName.substring(0, 1) : '';
+                              firstNameCtrl.text = _bookerName.length > 1
+                                  ? _bookerName.substring(1) : '';
+                            } else {
+                              lastNameCtrl.clear();
+                              firstNameCtrl.clear();
+                            }
+                          });
+                        },
+                      ),
+                      const Divider(),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    // ── 탑승객 유형 선택 ───────────────────
+                    const Text('탑승객 유형',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: ['성인', '소아', '유아'].map((type) {
+                        final isAvailable = type == '성인'
+                            ? adultAdded < _adultCount
+                            : type == '소아'
+                            ? childAdded < _childCount
+                            : infantAdded < _infantCount;
+                        final isSelected = selectedType == type;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: (isAvailable || editIndex != null)
+                                ? () => setModalState(() => selectedType = type)
+                                : null,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : (isAvailable || editIndex != null)
+                                    ? AppColors.backgroundWhite
+                                    : AppColors.backgroundGrey,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                type,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isAvailable || editIndex != null)
+                                      ? AppColors.textPrimary
+                                      : AppColors.textSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ── 성 / 이름 입력 ─────────────────────
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('성',
+                                  style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: lastNameCtrl,
+                                decoration: const InputDecoration(
+                                  hintText: '홍',
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 14),
+                                ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                      RegExp(r'[a-zA-Zㄱ-ㅎ가-힣]')),
+                                ],
+                                validator: (val) => val == null || val.trim().isEmpty
+                                    ? '성을 입력해주세요' : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('이름',
+                                  style: TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: firstNameCtrl,
+                                decoration: const InputDecoration(
+                                  hintText: '길동',
+                                  border: OutlineInputBorder(),
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 14),
+                                ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                      RegExp(r'[a-zA-Zㄱ-ㅎ가-힣]')),
+                                ],
+                                validator: (val) => val == null || val.trim().isEmpty
+                                    ? '이름을 입력해주세요' : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ── 생년월일 입력 ──────────────────────
+                    const Text('생년월일',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: birthCtrl,
+                      decoration: const InputDecoration(
+                        hintText: '예) 19990101',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 14),
+                      ),
+                      keyboardType: TextInputType.number,
+                      maxLength: 8,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return '생년월일을 입력해주세요';
+                        }
+                        if (val.trim().length != 8) {
+                          return '8자리로 입력해주세요';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // ── 성별 선택 ──────────────────────────
+                    const Text('성별',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: ['남성', '여성'].map((gender) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Row(
+                            children: [
+                              Radio<String>(
+                                value: gender,
+                                groupValue: selectedGender,
+                                onChanged: (val) =>
+                                    setModalState(() => selectedGender = val!),
+                                activeColor: AppColors.primary,
+                              ),
+                              Text(gender),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── 취소 / 완료 버튼 ───────────────────
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CommonButton(
+                            text: '취소',
+                            isOutlined: true,
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: CommonButton(
+                            text: '완료',
+                            onPressed: () {
+                              if (!formKey.currentState!.validate()) return;
+                              final name =
+                                  '${lastNameCtrl.text.trim()} '
+                                  '${firstNameCtrl.text.trim()}';
+                              final passenger = PassengerItem(
+                                passengerType:   selectedType,
+                                passengerName:   name,
+                                passengerBirth:  birthCtrl.text.trim(),
+                                passengerGender: selectedGender,
+                              );
+                              setState(() {
+                                if (editIndex != null) {
+                                  _passengers[editIndex] = passenger;
+                                } else {
+                                  _passengers.add(passenger);
+                                }
+                              });
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
+  // ── 예약 진행 ─────────────────────────────────────────────
   Future<void> _onReserve() async {
     debugPrint('[ReservationScreen] 계속 예약 버튼 클릭');
 
+    if (_isLoading) return;
 
-    if (!_formKey.currentState!.validate()) {
-      debugPrint('[ReservationScreen] 유효성 검사 실패');
+    if (_passengers.length < _totalCount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '탑승객 정보를 모두 입력해주세요. '
+                  '(${_passengers.length}/$_totalCount)'),
+        ),
+      );
       return;
     }
 
@@ -80,44 +418,15 @@ class _ReservationScreenState extends State<ReservationScreen> {
     final dep = flightController.selectedDep;
     final ret = flightController.selectedRet;
 
-    if (dep == null) {
-      debugPrint('[ReservationScreen] 선택한 항공편 없음');
-      return;
-    }
+    if (dep == null) return;
 
-    final passengerName =
-        '${_lastNameController.text.trim()} '
-        '${_firstNameController.text.trim()}';
-
-    debugPrint('[ReservationScreen] 탑승객: $passengerName / '
-        '생년월일: ${_birthController.text.trim()} / '
-        '성별: $_selectedGender');
-
-    // ✅ [변경 전] memberId 없음
-    // ✅ [변경 후] mid 추가 (로그인 연동 후 교체)
-    // final mid = context.read<LoginController>().mid;
-
-    // ✅ [변경 전] 'user1' 하드코딩
-    // mid: 'user1'
-    // ✅ [변경 후] SharedPreferences 에서 가져오기
-    final prefs = await SharedPreferences.getInstance();
-    final mid = prefs.getString('userMid') ?? '';
-    debugPrint('[ReservationScreen] mid: $mid');
-
-
-    // ✅ [추가] 로그인 확인 로그
+    final prefs      = await SharedPreferences.getInstance();
+    final mid        = prefs.getString('userMid') ?? '';
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final token = prefs.getString('accessToken') ?? '';
-    debugPrint('[ReservationScreen] 로그인 여부: $isLoggedIn');
-    debugPrint('[ReservationScreen] mid: $mid');
-    debugPrint('[ReservationScreen] 토큰: $token');
-
-
+    final token      = prefs.getString('accessToken') ?? '';
+    debugPrint('[ReservationScreen] 로그인: $isLoggedIn / mid: $mid / 토큰: $token');
 
     final reservation = ReservationItem(
-      // ✅ [추후 로그인 연동] null → loginController.mid 로 교체
-      // mid:             null,
-      // mid:             'user1',  // ✅ [테스트용]
       mid:             mid,
       airlineNm:       dep.airlineNm,
       flightNo:        dep.flightNo,
@@ -133,9 +442,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       retDepPlandTime: ret?.depPlandTime,
       retArrPlandTime: ret?.arrPlandTime,
       retPrice:        ret?.price,
-      passengerName:   passengerName,
-      passengerBirth:  _birthController.text.trim(),
-      passengerGender: _selectedGender,
+      passengers:      _passengers,
       isRoundTrip:     flightController.isRoundTrip,
       reservedAt:      DateTime.now().toString(),
       status:          '예약완료',
@@ -143,19 +450,27 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
     setState(() => _isLoading = true);
 
-    await context.read<ReservationController>().addReservation(reservation);
-
+    final error = await context.read<ReservationController>().addReservation(reservation);
     setState(() => _isLoading = false);
 
-    debugPrint('[ReservationScreen] 예약 저장 완료 → 최종확인 화면으로 이동');
+    if (error != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
 
     if (mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ReservationConfirmScreen(
-            reservation: reservation,
-          ),
+          builder: (_) => ReservationConfirmScreen(reservation: reservation),
         ),
       );
     }
@@ -168,298 +483,307 @@ class _ReservationScreenState extends State<ReservationScreen> {
     final ret = controller.selectedRet;
 
     if (dep == null) {
-      debugPrint('[ReservationScreen] 항공편 정보 없음');
       return const Scaffold(
         body: Center(child: Text('항공편 정보가 없습니다')),
       );
     }
 
-    final totalPrice =
-        dep.price + (ret?.price ?? 0) + AirportConstants.issueFee;
+    // ── 금액 계산 ─────────────────────────────────────────
+    final bool hasPassengers = _passengers.isNotEmpty;
+    final passengerTypes = _passengers.map((p) => p.passengerType).toList();
+
+    // 탑승객 없을 때: 성인 1인 기준
+    final singlePrice = dep.price + (ret?.price ?? 0) + AirportConstants.issueFee;
+
+    // 탑승객 있을 때: FormatUtils.totalPassengerPrice 사용
+    final totalPrice = hasPassengers
+        ? FormatUtils.totalPassengerPrice(
+      depPrice: dep.price,
+      retPrice: ret?.price,
+      passengerTypes: passengerTypes,
+      issueFee: AirportConstants.issueFee,
+    )
+        : singlePrice;
 
     return AppBaseLayout(
       title: '예약하기',
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
 
-              // ── 출발지 - 도착지 타이틀 ───────────────────
-              Text(
-                '${controller.depAirportNm} → ${controller.arrAirportNm}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+            // ── 출발지 → 도착지 타이틀 ───────────────────
+            Text(
+              '${controller.depAirportNm} → ${controller.arrAirportNm}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
+            ),
 
-              const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-              // ── 가는편 ────────────────────────────────────
-              FlightSummaryCard(
-                label: '가는편',
-                depTime: dep.depPlandTime,
-                arrTime: dep.arrPlandTime,
-                depAirport: dep.depAirportNm ?? controller.depAirportNm,
-                arrAirport: dep.arrAirportNm ?? controller.arrAirportNm,
-                airline: '${dep.airlineNm ?? '-'} ${dep.flightNo ?? '-'}',
-                price: dep.price,
-              ),
+            // ── 가는편 요약 카드 ──────────────────────────
+            FlightSummaryCard(
+              label: '가는편',
+              depTime:    dep.depPlandTime,
+              arrTime:    dep.arrPlandTime,
+              depAirport: dep.depAirportNm ?? controller.depAirportNm,
+              arrAirport: dep.arrAirportNm ?? controller.arrAirportNm,
+              airline:    '${dep.airlineNm ?? '-'} ${dep.flightNo ?? '-'}',
+              price:      dep.price,
+            ),
 
-              // ── 오는편 (왕복일 때) ────────────────────────
-              if (controller.isRoundTrip && ret != null) ...[
-                const SizedBox(height: 12),
-                FlightSummaryCard(
-                  label: '오는편',
-                  depTime: ret.depPlandTime,
-                  arrTime: ret.arrPlandTime,
-                  depAirport: ret.depAirportNm ?? controller.arrAirportNm,
-                  arrAirport: ret.arrAirportNm ?? controller.depAirportNm,
-                  airline: '${ret.airlineNm ?? '-'} ${ret.flightNo ?? '-'}',
-                  price: ret.price,
-                ),
-              ],
-
-              const SizedBox(height: 24),
-
-              // ── 탑승객 정보 입력 ──────────────────────────
-              const Text(
-                '탑승객 정보',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
+            // ── 오는편 요약 카드 (왕복일 때만 표시) ──────
+            if (controller.isRoundTrip && ret != null) ...[
               const SizedBox(height: 12),
-
-              // 안내 문구
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '내국인은 한글 이름을, 외국인은 영문 이름으로 입력해주세요.\n'
-                      '로그인 시 저장된 탑승객 정보를 자동으로 불러올 수 있어요.',
-                  style: TextStyle(fontSize: 12, color: AppColors.primary),
-                ),
+              FlightSummaryCard(
+                label: '오는편',
+                depTime:    ret.depPlandTime,
+                arrTime:    ret.arrPlandTime,
+                depAirport: ret.depAirportNm ?? controller.arrAirportNm,
+                arrAirport: ret.arrAirportNm ?? controller.depAirportNm,
+                airline:    '${ret.airlineNm ?? '-'} ${ret.flightNo ?? '-'}',
+                price:      ret.price,
               ),
+            ],
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-              // 국적
-              const Text('국적',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedNation,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 14),
-                ),
-                items: _nations.map((n) => DropdownMenuItem(
-                  value: n,
-                  child: Text(n),
-                )).toList(),
-                onChanged: (val) =>
-                    setState(() => _selectedNation = val!),
+            // ── 예약자 정보 ───────────────────────────────
+            const Text('예약자 정보',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(8),
               ),
-
-              const SizedBox(height: 16),
-
-              // 성 / 이름
-              Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('성',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _lastNameController,
-                          decoration: const InputDecoration(
-                            hintText: '홍',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 14),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return '성을 입력해주세요';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('이름',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _firstNameController,
-                          decoration: const InputDecoration(
-                            hintText: '길동',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 14),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return '이름을 입력해주세요';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                  _infoRow('예약자 이름', _bookerName),
+                  const Divider(height: 20),
+                  _infoRow('이메일', _bookerEmail),
+                  const Divider(height: 20),
+                  _infoRow('전화번호', _bookerPhone),
                 ],
               ),
+            ),
 
-              const SizedBox(height: 16),
+            const SizedBox(height: 24),
 
-              // 생년월일
-              const Text('생년월일',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _birthController,
-                decoration: const InputDecoration(
-                  hintText: '예) 19990101',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 14),
-                ),
-                keyboardType: TextInputType.number,
-                maxLength: 8,
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return '생년월일을 입력해주세요';
-                  }
-                  if (val.trim().length != 8) {
-                    return '8자리로 입력해주세요';
-                  }
-                  return null;
-                },
+            // ── 탑승객 선택 ───────────────────────────────
+            Text(
+              '탑승객 선택 (${_passengers.length} / $_totalCount명)',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 8),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
               ),
-
-              const SizedBox(height: 8),
-
-              // 성별
-              const Text('성별',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(
-                children: _genders.map((gender) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Row(
-                      children: [
-                        Radio<String>(
-                          value: gender,
-                          groupValue: _selectedGender,
-                          onChanged: (val) =>
-                              setState(() => _selectedGender = val!),
-                          activeColor: AppColors.primary,
-                        ),
-                        Text(gender),
-                      ],
-                    ),
-                  );
-                }).toList(),
+              child: const Text(
+                '예약을 계속 진행하시려면 정확한 승객수 만큼,\n탑승객을 선택/추가해주세요.',
+                style: TextStyle(fontSize: 12, color: AppColors.primary),
               ),
+            ),
 
-              const SizedBox(height: 24),
+            const SizedBox(height: 12),
 
-              // ── 금액 요약 ─────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
+            // ── 추가된 탑승객 목록 ────────────────────────
+            ..._passengers.asMap().entries.map((entry) {
+              final index = entry.key;
+              final p = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.backgroundGrey,
-                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Column(
+                child: Row(
                   children: [
-                    _priceRow('가는편', dep.price),
-                    if (controller.isRoundTrip && ret != null) ...[
-                      const SizedBox(height: 8),
-                      _priceRow('오는편', ret.price),
-                    ],
-                    const SizedBox(height: 8),
-                    _priceRow('발급 수수료', AirportConstants.issueFee,
-                        isGrey: true),
-                    const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          '결제 예상금액',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          FormatUtils.price(totalPrice),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                            fontSize: 16,
+                    const Icon(Icons.check_circle,
+                        color: AppColors.primary, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${p.passengerType} · ${p.passengerName}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ),
-                      ],
+                          Text(
+                            '${p.passengerBirth} · ${p.passengerGender}',
+                            style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () =>
+                          _showAddPassengerSheet(editIndex: index),
+                      child: const Text('수정',
+                          style: TextStyle(color: AppColors.primary)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close,
+                          size: 16, color: AppColors.textSecondary),
+                      onPressed: () =>
+                          setState(() => _passengers.removeAt(index)),
                     ),
                   ],
                 ),
-              ),
+              );
+            }),
 
-              const SizedBox(height: 12),
-
-              // 안내 문구
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFDE7),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFF176)),
+            // ── 탑승객 추가하기 버튼 ──────────────────────
+            if (_passengers.length < _totalCount) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _showAddPassengerSheet,
+                icon: const Icon(Icons.add, color: AppColors.primary),
+                label: const Text(
+                  '탑승객 추가하기',
+                  style: TextStyle(color: AppColors.primary),
                 ),
-                child: const Text(
-                  '· 발권 후 취소/변경 시 취소 수수료가 발생할 수 있습니다.\n'
-                      '· 유류할증료는 항공사 정책에 따라 변경될 수 있습니다.',
-                  style: TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
-
-              const SizedBox(height: 32),
-
-              // ── 계속 예약 버튼 ────────────────────────────
-              CommonButton(
-                text: '계속 예약',
-                onPressed: _onReserve,
-                isEnabled: !_isLoading,
-              ),
-
             ],
-          ),
+
+            const SizedBox(height: 24),
+
+            // ── 금액 요약 ─────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundGrey,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                children: [
+
+                  // ✅ 탑승객 미입력: 성인 1인 기준 표시
+                  if (!hasPassengers) ...[
+                    _priceRow('가는편 (성인 1인 기준)', dep.price),
+                    if (controller.isRoundTrip && ret != null) ...[
+                      const SizedBox(height: 8),
+                      _priceRow('오는편 (성인 1인 기준)', ret.price),
+                    ],
+                  ],
+
+                  // ✅ 탑승객 입력 후: 유형별 가격 표시
+                  // 성인 100% / 소아 75% / 유아 10%
+                  if (hasPassengers) ...[
+                    // 가는편 탑승객별 가격
+                    ..._passengers.map((p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _priceRow(
+                        '가는편 ${p.passengerType} (${p.passengerName})',
+                        FormatUtils.passengerPrice(dep.price, p.passengerType),
+                      ),
+                    )),
+                    // 오는편 탑승객별 가격 (왕복일 때)
+                    if (controller.isRoundTrip && ret != null)
+                      ..._passengers.map((p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _priceRow(
+                          '오는편 ${p.passengerType} (${p.passengerName})',
+                          FormatUtils.passengerPrice(ret.price, p.passengerType),
+                        ),
+                      )),
+                  ],
+
+                  const SizedBox(height: 8),
+                  _priceRow('발급 수수료', AirportConstants.issueFee, isGrey: true),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        hasPassengers ? '총 결제금액' : '결제 예상금액 (1인 기준)',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        FormatUtils.price(totalPrice),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── 유의사항 안내 ─────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFDE7),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFF176)),
+              ),
+              child: const Text(
+                '· 발권 후 취소/변경 시 취소 수수료가 발생할 수 있습니다.\n'
+                    '· 유류할증료는 항공사 정책에 따라 변경될 수 있습니다.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // ── 계속 예약 버튼 ────────────────────────────
+            CommonButton(
+              text: '계속 예약',
+              onPressed: _onReserve,
+              isEnabled: !_isLoading && _passengers.length == _totalCount,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ── 금액 행 ───────────────────────────────────────────────
+  // ── 정보 행 위젯 ──────────────────────────────────────────
+  Widget _infoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: const TextStyle(color: AppColors.textSecondary)),
+        Text(
+          value.isEmpty ? '-' : value,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  // ── 금액 행 위젯 ──────────────────────────────────────────
   Widget _priceRow(String label, int price, {bool isGrey = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
