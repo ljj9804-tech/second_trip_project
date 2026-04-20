@@ -11,7 +11,7 @@ class CarRentListService {
     CarSearchCursorRequestDTO request,
   ) async {
     final response = await dio.get(
-      '/api/rental/search/all',
+      '/car/search/all',
       queryParameters: request.toQueryParameters(),
     );
     debugPrint('searchCars 응답: ${response.data}');
@@ -26,7 +26,7 @@ class CarRentListService {
 
   Future<CompanyCarPageResponseDTO> fetchCarOptions(CompanyCarPageRequestDTO request) async {
     final response = await dio.get(
-      '/api/rental/search/options',
+      '/car/search/company',
       queryParameters: request.toQueryParameters(),
     );
     debugPrint('fetchCarOptions 응답: ${response.data}');

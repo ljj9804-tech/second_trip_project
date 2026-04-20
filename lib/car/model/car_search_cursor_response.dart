@@ -26,10 +26,10 @@ class CarSearchCursorResponseDTO {
       seats: json['seats'],
       fuel: json['fuel'],
       lowestPrice: json['lowestPrice'],
-      companyCarDTOs: (json['options'] as List)
+      companyCarDTOs: (json['companyCarDTOs'] as List)
           .map((e) => CompanyCarDTO.fromJson(e))
           .toList(),
-      totalOptionCount: json['totalOptionCount'] ?? 0,
+      totalOptionCount: json['totalCompanyCarCount'] ?? 0,
     );
   }
 

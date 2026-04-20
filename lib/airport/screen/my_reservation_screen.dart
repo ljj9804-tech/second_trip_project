@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/widget/app_base_layout.dart';
@@ -8,6 +7,7 @@ import '../../common/widget/common_button.dart';
 import '../../car/controller/car_reservation_controller.dart';
 import '../../car/model/car_rental_reservation_dto.dart';
 import '../../car/util/format_util.dart';
+import '../../util/secure_storage_helper.dart';
 import '../controller/reservation_controller.dart';
 import '../model/reservation_item.dart';
 import '../utils/format_utils.dart';
@@ -34,8 +34,7 @@ class _MyReservationScreenState extends State<MyReservationScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = await SharedPreferences.getInstance();
-      _mid = prefs.getString('userMid') ?? '';
+      _mid = await SecureStorageHelper().getUserMid() ?? '';
       debugPrint('[MyReservationScreen] 예약 목록 조회 시작 → mid: $_mid');
 
       switch (widget.type) {

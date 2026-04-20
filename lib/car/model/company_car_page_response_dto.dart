@@ -17,7 +17,7 @@ class CompanyCarPageResponseDTO {
 
   factory CompanyCarPageResponseDTO.fromJson(Map<String, dynamic> json) {
     return CompanyCarPageResponseDTO(
-      companyCarDTOs: (json['options'] as List)
+      companyCarDTOs: (json['companyCarDTOs'] as List)
           .map((e) => CompanyCarDTO.fromJson(e))
           .toList(),
       page: json['page'],

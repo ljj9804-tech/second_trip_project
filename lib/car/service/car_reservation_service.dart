@@ -1,15 +1,16 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../constants.dart';
+import '../../util/secure_storage_helper.dart';
 import '../model/car_reservation_cursor_request_dto.dart';
 import '../model/car_reservation_cursor_response_dto.dart';
 import '../model/car_rental_reservation_dto.dart';
 
 class CarReservationService {
+  final _storage = SecureStorageHelper();
+
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('accessToken');
+    return await _storage.getAccessToken();
   }
 
   Future<({CarRentalReservationDTO? rental, String? error})> createRental(int carId, String startDate, String endDate) async {
@@ -18,7 +19,7 @@ class CarReservationService {
 
     try {
       final response = await dio.post(
-        '/api/rental',
+        '/api/car/reservation',
         data: {'carId': carId, 'startDate': startDate, 'endDate': endDate},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
@@ -41,7 +42,7 @@ class CarReservationService {
 
     try {
       final response = await dio.get(
-        '/api/rental/my',
+        '/api/car/reservation/my',
         queryParameters: request.toQueryParameters(),
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
@@ -57,7 +58,7 @@ class CarReservationService {
 
     try {
       await dio.delete(
-        '/api/rental/$rentalId',
+        '/api/car/reservation/$rentalId',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return (success: true, error: null);

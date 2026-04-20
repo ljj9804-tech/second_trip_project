@@ -62,7 +62,7 @@ class CarReservationController with ChangeNotifier {
       _errorMessage = result.error;
       debugPrint('내 예약 조회 실패: ${result.error}');
     } else {
-      _myRentals = result.response!.rentals;
+      _myRentals = result.response!.reservation;
       _hasNext = result.response!.hasNext;
       _nextCursorStatusOrder = result.response!.nextCursorStatusOrder;
       _nextCursorEndDate = result.response!.nextCursorEndDate;
@@ -89,7 +89,7 @@ class CarReservationController with ChangeNotifier {
     if (result.error != null) {
       debugPrint('내 예약 추가 조회 실패: ${result.error}');
     } else {
-      _myRentals.addAll(result.response!.rentals);
+      _myRentals.addAll(result.response!.reservation);
       _hasNext = result.response!.hasNext;
       _nextCursorStatusOrder = result.response!.nextCursorStatusOrder;
       _nextCursorEndDate = result.response!.nextCursorEndDate;

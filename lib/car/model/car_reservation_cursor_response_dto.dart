@@ -1,14 +1,14 @@
 import 'car_rental_reservation_dto.dart';
 
 class CarReservationCursorResponseDTO {
-  final List<CarRentalReservationDTO> rentals;
+  final List<CarRentalReservationDTO> reservation;
   final bool hasNext;
   final int? nextCursorStatusOrder;
   final String? nextCursorEndDate;
   final int? nextCursorId;
 
   CarReservationCursorResponseDTO({
-    required this.rentals,
+    required this.reservation,
     required this.hasNext,
     this.nextCursorStatusOrder,
     this.nextCursorEndDate,
@@ -17,7 +17,7 @@ class CarReservationCursorResponseDTO {
 
   factory CarReservationCursorResponseDTO.fromJson(Map<String, dynamic> json) {
     return CarReservationCursorResponseDTO(
-      rentals: (json['content'] as List)
+      reservation: (json['reservation'] as List)
           .map((e) => CarRentalReservationDTO.fromJson(e))
           .toList(),
       hasNext: json['hasNext'],
