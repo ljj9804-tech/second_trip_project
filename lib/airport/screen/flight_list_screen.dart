@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../common/constants/app_colors.dart';
+import '../../common/widget/common_button.dart';
 import '../controller/flight_controller.dart';
 import '../model/flight_item.dart';
-import '../utils/format_utils.dart'; // 공통 포맷 유틸 사용
+import '../utils/format_utils.dart';
 import 'flight_detail_screen.dart';
 
 /// 항공편 목록 화면
@@ -37,7 +39,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
     _scrollController.addListener(_onScroll);
   }
 
-  // ── 무한스크롤: 끝에 가까워지면 추가 데이터 로드 ─────────
   void _onScroll() {
     final position = _scrollController.position;
     final isNearEnd = position.pixels >= position.maxScrollExtent - 200;
@@ -50,38 +51,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
-  }
-
-  // ── 날짜 표시 포맷 (20260420 → 4.20 월) ──────────────────
-  String _formatDateSummary(String date) {
-    if (date.length < 8) return '-';
-    final dt = DateTime(
-      int.parse(date.substring(0, 4)),
-      int.parse(date.substring(4, 6)),
-      int.parse(date.substring(6, 8)),
-    );
-    const days = ['월', '화', '수', '목', '금', '토', '일'];
-    return '${dt.month}.${dt.day} ${days[dt.weekday - 1]}';
-  }
-
-  // ── 시각 포맷 (20260421134000 → 13:40) ───────────────────
-  String _formatTime(String? time) {
-    if (time == null || time.length < 12) return '-';
-    return '${time.substring(8, 10)}:${time.substring(10, 12)}';
-  }
-
-  // ── 비행 소요시간 계산 ────────────────────────────────────
-  String _duration(String? dep, String? arr) {
-    if (dep == null || arr == null ||
-        dep.length < 12 || arr.length < 12) return '-';
-    final d = DateTime.parse(
-        '${dep.substring(0, 4)}-${dep.substring(4, 6)}-${dep.substring(6, 8)} '
-            '${dep.substring(8, 10)}:${dep.substring(10, 12)}:00');
-    final a = DateTime.parse(
-        '${arr.substring(0, 4)}-${arr.substring(4, 6)}-${arr.substring(6, 8)} '
-            '${arr.substring(8, 10)}:${arr.substring(10, 12)}:00');
-    final diff = a.difference(d);
-    return '${diff.inHours}시간 ${diff.inMinutes % 60}분';
   }
 
   // ── 정렬 적용 ─────────────────────────────────────────────
@@ -98,7 +67,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
         sorted.sort((a, b) =>
             (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? ''));
         break;
-      default: // 일정시간 빠른순
+      default:
         sorted.sort((a, b) =>
             (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? ''));
     }
@@ -130,11 +99,13 @@ class _FlightListScreenState extends State<FlightListScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const Icon(Icons.error_outline,
+                      size: 48, color: AppColors.danger),
                   const SizedBox(height: 12),
                   Text(controller.errorMessage!),
                   const SizedBox(height: 12),
-                  ElevatedButton(
+                  CommonButton(
+                    text: '다시 시도',
                     onPressed: () =>
                         context.read<FlightController>().fetchInitial(
                           depAirportId: controller.depAirportId,
@@ -145,7 +116,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
                           childCount:   controller.childCount,
                           infantCount:  controller.infantCount,
                         ),
-                    child: const Text('다시 시도'),
                   ),
                 ],
               ),
@@ -157,7 +127,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
             return const Center(child: Text('항공편이 없습니다'));
           }
 
-          // 정렬 적용
           final sorted = _sortedItems(controller.items);
 
           return Column(
@@ -167,20 +136,20 @@ class _FlightListScreenState extends State<FlightListScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 10),
-                color: Colors.blue.shade50,
+                color: AppColors.primaryLight,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 날짜 + 요일
+                    // 날짜
                     Row(
                       children: [
                         const Icon(Icons.calendar_today,
-                            size: 14, color: Colors.blue),
+                            size: 14, color: AppColors.primary),
                         const SizedBox(width: 4),
                         Text(
-                          _formatDateSummary(controller.depPlandTime),
+                          FormatUtils.date(controller.depPlandTime),
                           style: const TextStyle(
-                              fontSize: 13, color: Colors.blue),
+                              fontSize: 13, color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -189,32 +158,33 @@ class _FlightListScreenState extends State<FlightListScreen> {
                     Row(
                       children: [
                         const Icon(Icons.person_outline,
-                            size: 14, color: Colors.blue),
+                            size: 14, color: AppColors.primary),
                         const SizedBox(width: 4),
                         Text(
-                          '성인 ${controller.adultCount}'
-                              '${controller.childCount > 0
-                              ? ', 소아 ${controller.childCount}' : ''}'
-                              '${controller.infantCount > 0
-                              ? ', 유아 ${controller.infantCount}' : ''}',
+                          FormatUtils.passenger(
+                            controller.adultCount,
+                            controller.childCount,
+                            controller.infantCount,
+                          ),
                           style: const TextStyle(
-                              fontSize: 13, color: Colors.blue),
+                              fontSize: 13, color: AppColors.primary),
                         ),
                       ],
                     ),
 
-                    // 재설정 버튼 → 검색 조건 변경 모달
+                    // 재설정 버튼
                     GestureDetector(
                       onTap: () => _showResetModal(context, controller),
                       child: const Row(
                         children: [
-                          Icon(Icons.tune, size: 14, color: Colors.blue),
+                          Icon(Icons.tune,
+                              size: 14, color: AppColors.primary),
                           SizedBox(width: 4),
                           Text(
                             '재설정',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.blue,
+                              color: AppColors.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -242,19 +212,21 @@ class _FlightListScreenState extends State<FlightListScreen> {
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.blue
-                                : Colors.grey.shade100,
+                                ? AppColors.primary
+                                : AppColors.backgroundGrey,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: isSelected
-                                  ? Colors.blue
-                                  : Colors.grey.shade300,
+                                  ? AppColors.primary
+                                  : AppColors.border,
                             ),
                           ),
                           child: Text(
                             option,
                             style: TextStyle(
-                              color: isSelected ? Colors.white : Colors.black,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
                               fontSize: 13,
                             ),
                           ),
@@ -269,10 +241,9 @@ class _FlightListScreenState extends State<FlightListScreen> {
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  itemCount: sorted.length + 1, // +1: 로딩/완료 표시용
+                  itemCount: sorted.length + 1,
                   itemBuilder: (context, index) {
 
-                    // 마지막 아이템: 로딩 또는 완료 표시
                     if (index == sorted.length) {
                       if (controller.isFetchingMore) {
                         return const Padding(
@@ -286,7 +257,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
                           child: Center(
                             child: Text(
                               '모든 항공편을 불러왔습니다 ✅',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(
+                                  color: AppColors.textSecondary),
                             ),
                           ),
                         );
@@ -307,9 +279,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
   }
 
   // ── 검색 조건 재설정 모달 ─────────────────────────────────
-  // 출발지/도착지/날짜/인원 변경 후 재검색 가능
   void _showResetModal(BuildContext context, FlightController controller) {
-    // 현재 검색 조건 초기값으로 설정
     String? tempDep = controller.depAirportId;
     String? tempArr = controller.arrAirportId;
     DateTime tempDate = DateTime(
@@ -330,7 +300,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
       builder: (_) => StatefulBuilder(
         builder: (context, setModalState) {
 
-          // 날짜 표시 포맷 (모달 내부용)
           String formatDisplay(DateTime date) {
             const days = ['월', '화', '수', '목', '금', '토', '일'];
             return '${date.month}.${date.day} ${days[date.weekday - 1]}';
@@ -346,21 +315,21 @@ class _FlightListScreenState extends State<FlightListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
 
-                // 타이틀
                 const Text(
                   '검색 조건 변경',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 20),
 
-                // ── 출발지 / 도착지 선택 ───────────────
+                // ── 출발지 / 도착지 ─────────────────────
                 const Text('출발지 / 도착지',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    // 출발지 선택
                     Expanded(
                       child: GestureDetector(
                         onTap: () async {
@@ -378,8 +347,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
                                   itemBuilder: (_, i) => ListTile(
                                     title: Text(airports[i].value),
                                     onTap: () {
-                                      setModalState(
-                                              () => tempDep = airports[i].key);
+                                      setModalState(() =>
+                                      tempDep = airports[i].key);
                                       Navigator.pop(context);
                                     },
                                   ),
@@ -391,29 +360,29 @@ class _FlightListScreenState extends State<FlightListScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
+                            border: Border.all(color: AppColors.border),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             FlightItem.getAirportName(tempDep),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
                     ),
 
-                    // 출발지/도착지 교체 버튼
                     IconButton(
                       onPressed: () => setModalState(() {
                         final t = tempDep;
                         tempDep = tempArr;
                         tempArr = t;
                       }),
-                      icon: const Icon(Icons.swap_horiz, color: Colors.blue),
+                      icon: const Icon(Icons.swap_horiz,
+                          color: AppColors.primary),
                     ),
 
-                    // 도착지 선택
                     Expanded(
                       child: GestureDetector(
                         onTap: () async {
@@ -431,8 +400,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
                                   itemBuilder: (_, i) => ListTile(
                                     title: Text(airports[i].value),
                                     onTap: () {
-                                      setModalState(
-                                              () => tempArr = airports[i].key);
+                                      setModalState(() =>
+                                      tempArr = airports[i].key);
                                       Navigator.pop(context);
                                     },
                                   ),
@@ -444,13 +413,14 @@ class _FlightListScreenState extends State<FlightListScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
+                            border: Border.all(color: AppColors.border),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             FlightItem.getAirportName(tempArr),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -462,7 +432,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
 
                 // ── 출발 날짜 선택 ─────────────────────
                 const Text('출발 날짜',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () async {
@@ -480,17 +451,18 @@ class _FlightListScreenState extends State<FlightListScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: AppColors.border),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.calendar_today,
-                            size: 16, color: Colors.grey),
+                            size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text(
                           formatDisplay(tempDate),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -501,12 +473,12 @@ class _FlightListScreenState extends State<FlightListScreen> {
 
                 // ── 인원 선택 ──────────────────────────
                 const Text('인원',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 성인 (최소 1명)
                     _modalPassengerRow(
                       label: '성인',
                       count: tempAdult,
@@ -515,7 +487,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
                       },
                       onPlus: () => setModalState(() => tempAdult++),
                     ),
-                    // 소아
                     _modalPassengerRow(
                       label: '소아',
                       count: tempChild,
@@ -524,12 +495,12 @@ class _FlightListScreenState extends State<FlightListScreen> {
                       },
                       onPlus: () => setModalState(() => tempChild++),
                     ),
-                    // 유아
                     _modalPassengerRow(
                       label: '유아',
                       count: tempInfant,
                       onMinus: () {
-                        if (tempInfant > 0) setModalState(() => tempInfant--);
+                        if (tempInfant > 0)
+                          setModalState(() => tempInfant--);
                       },
                       onPlus: () => setModalState(() => tempInfant++),
                     ),
@@ -539,16 +510,14 @@ class _FlightListScreenState extends State<FlightListScreen> {
                 const SizedBox(height: 24),
 
                 // ── 검색 버튼 ─────────────────────────
-                ElevatedButton(
+                CommonButton(
+                  text: '검색',
                   onPressed: () {
                     Navigator.pop(context);
-                    // 날짜를 API 형식으로 변환 (20260420)
                     final dateStr =
                         '${tempDate.year}'
                         '${tempDate.month.toString().padLeft(2, '0')}'
                         '${tempDate.day.toString().padLeft(2, '0')}';
-
-                    // 새 조건으로 재검색
                     context.read<FlightController>().fetchInitial(
                       depAirportId: tempDep ?? controller.depAirportId,
                       arrAirportId: tempArr ?? controller.arrAirportId,
@@ -559,12 +528,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
                       infantCount:  tempInfant,
                     );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('검색', style: TextStyle(fontSize: 16)),
                 ),
               ],
             ),
@@ -575,7 +538,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
   }
 
   // ── 모달 인원 선택 행 ─────────────────────────────────────
-  // label: 성인/소아/유아, count: 현재 수량
   Widget _modalPassengerRow({
     required String label,
     required int count,
@@ -585,13 +547,14 @@ class _FlightListScreenState extends State<FlightListScreen> {
     return Column(
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.textSecondary)),
         Row(
           children: [
             IconButton(
               onPressed: onMinus,
               icon: const Icon(Icons.remove_circle_outline),
-              color: count > 0 ? Colors.blue : Colors.grey,
+              color: count > 0 ? AppColors.primary : AppColors.textSecondary,
               iconSize: 20,
             ),
             Text('$count',
@@ -600,7 +563,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
             IconButton(
               onPressed: onPlus,
               icon: const Icon(Icons.add_circle_outline),
-              color: Colors.blue,
+              color: AppColors.primary,
               iconSize: 20,
             ),
           ],
@@ -610,7 +573,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
   }
 
   // ── 항공편 카드 ───────────────────────────────────────────
-  // 클릭 시 해당 항공편 선택 후 상세 화면으로 이동
   Widget _flightCard(
       BuildContext context, FlightItem item, FlightController controller) {
     return Card(
@@ -619,7 +581,8 @@ class _FlightListScreenState extends State<FlightListScreen> {
         onTap: item.seatsLeft == 0 ? null : () {
           controller.selectDep(item);
           Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const FlightDetailScreen()));
+              MaterialPageRoute(
+                  builder: (_) => const FlightDetailScreen()));
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -636,12 +599,11 @@ class _FlightListScreenState extends State<FlightListScreen> {
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 14),
                   ),
-                  // 잔여 10석 이하면 빨간색으로 표시
                   item.seatsLeft == 0
                       ? const Text(
                     '마감',
                     style: TextStyle(
-                      color: Colors.red,
+                      color: AppColors.danger,
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -649,7 +611,9 @@ class _FlightListScreenState extends State<FlightListScreen> {
                       : Text(
                     '잔여 ${item.seatsLeft}석',
                     style: TextStyle(
-                      color: item.seatsLeft <= 10 ? Colors.red : Colors.grey,
+                      color: item.seatsLeft <= 10
+                          ? AppColors.danger
+                          : AppColors.textSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -662,51 +626,48 @@ class _FlightListScreenState extends State<FlightListScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // 출발 정보
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _formatTime(item.depPlandTime),
+                        FormatUtils.time(item.depPlandTime),
                         style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         item.depAirportNm ?? '-',
                         style: const TextStyle(
-                            color: Colors.grey, fontSize: 12),
+                            color: AppColors.textSecondary, fontSize: 12),
                       ),
                     ],
                   ),
-
-                  // 소요시간 + 직항
                   Column(
                     children: [
                       Text(
-                        _duration(item.depPlandTime, item.arrPlandTime),
+                        FormatUtils.duration(
+                            item.depPlandTime, item.arrPlandTime),
                         style: const TextStyle(
-                            color: Colors.grey, fontSize: 12),
+                            color: AppColors.textSecondary, fontSize: 12),
                       ),
                       const Icon(Icons.arrow_forward,
-                          color: Colors.grey, size: 16),
+                          color: AppColors.textSecondary, size: 16),
                       const Text('직항',
-                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 12)),
                     ],
                   ),
-
-                  // 도착 정보
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _formatTime(item.arrPlandTime),
+                        FormatUtils.time(item.arrPlandTime),
                         style: const TextStyle(
                             fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         item.arrAirportNm ?? '-',
                         style: const TextStyle(
-                            color: Colors.grey, fontSize: 12),
+                            color: AppColors.textSecondary, fontSize: 12),
                       ),
                     ],
                   ),
@@ -716,7 +677,6 @@ class _FlightListScreenState extends State<FlightListScreen> {
               const SizedBox(height: 12),
 
               // ── 가격 + 성인 1인 기준 ───────────────────
-              // ✅ 공통 FormatUtils.price() 사용
               Align(
                 alignment: Alignment.centerRight,
                 child: Column(
@@ -725,14 +685,16 @@ class _FlightListScreenState extends State<FlightListScreen> {
                     Text(
                       FormatUtils.price(item.price),
                       style: const TextStyle(
-                        color: Colors.blue,
+                        color: AppColors.primary,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     const Text(
                       '성인 1인 기준',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary),
                     ),
                   ],
                 ),
