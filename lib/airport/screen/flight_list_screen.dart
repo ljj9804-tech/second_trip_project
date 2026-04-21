@@ -25,6 +25,7 @@ class _FlightListScreenState extends State<FlightListScreen> {
   // ── 정렬 상태 ─────────────────────────────────────────────
   // _sortType: 현재 선택된 정렬 방식 (기본: 일정시간 빠른순)
   // _sortOptions: 정렬 탭 목록
+  // 소요시간 짧은순으로 변경
   String _sortType = '일정시간 빠른순';
   final List<String> _sortOptions = [
     '일정시간 빠른순',
@@ -63,18 +64,61 @@ class _FlightListScreenState extends State<FlightListScreen> {
     final sorted = List<FlightItem>.from(items);
     switch (_sortType) {
       case '가격 낮은순':
-        sorted.sort((a, b) => a.price.compareTo(b.price));
+        // sorted.sort((a, b) => a.price.compareTo(b.price));
+        sorted.sort((a, b) {
+          int compare = a.price.compareTo(b.price);
+          // 가격이 같으면 출발 시간이 빠른 순으로 정렬
+          if (compare == 0) {
+            return (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? '');
+          }
+          return compare;
+        });
         break;
       case '가격 높은순':
-        sorted.sort((a, b) => b.price.compareTo(a.price));
+        // sorted.sort((a, b) => b.price.compareTo(a.price));
+        sorted.sort((a, b) {
+          int compare = b.price.compareTo(a.price);
+          // 가격이 같으면 출발 시간이 빠른 순으로 정렬
+          if (compare == 0) {
+            return (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? '');
+          }
+          return compare;
+        });
         break;
       case '출발시간 빠른순':
-        sorted.sort((a, b) =>
-            (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? ''));
+        // sorted.sort((a, b) =>
+        //     (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? ''));
+
+        // 이미 시간순이므로 1차 정렬만으로 충분하지만,
+        // 혹시 시간이 같으면 가격이 낮은 순으로 2차 정렬을 줄 수 있습니다.
+        sorted.sort((a, b) {
+          int compare = (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? '');
+          if (compare == 0) {
+            return a.price.compareTo(b.price);
+          }
+          return compare;
+        });
         break;
-      default: // 일정시간 빠른순
-        sorted.sort((a, b) =>
-            (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? ''));
+      // default: // 일정시간 빠른순
+      //   sorted.sort((a, b) =>
+      //       (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? ''));
+      default:
+        // 일정시간(소요시간) 짧은순
+        // 정렬기준 : 소요시간 -> 출발시간
+        sorted.sort((a, b) {
+          int aDur = FormatUtils.durationMinutes(a.depPlandTime, a.arrPlandTime);
+          int bDur = FormatUtils.durationMinutes(b.depPlandTime, b.arrPlandTime);
+
+          // 1. 먼저 비행 소요시간을 비교합니다.
+          int compare = aDur.compareTo(bDur);
+
+          // 2. 소요시간이 같으면 출발 시간이 빠른 순으로 정렬
+          if (compare == 0) {
+            return (a.depPlandTime ?? '').compareTo(b.depPlandTime ?? '');
+          }
+
+          return compare;
+        });
     }
     return sorted;
   }

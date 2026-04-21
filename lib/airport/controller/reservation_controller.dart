@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:second_trip_project/util/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common/constants/api_constants.dart';
 import '../../services/member_service.dart';
@@ -23,36 +24,40 @@ class ReservationController with ChangeNotifier {
   // ── JWT 토큰 헤더 생성 ────────────────────────────────────
   // MemberService → SecureStorageHelper 순으로 토큰 조회
   // 모든 API 요청 전에 호출해서 헤더에 포함
-  Future<Map<String, String>> _getHeaders() async {
-    final memberService = MemberService();
-    final token = await memberService.getAccessToken() ?? '';
-    debugPrint('[ReservationController] 토큰: $token');
-    return {
-      'Content-Type' : 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-  }
+  // Future<Map<String, String>> _getHeaders() async {
+  //   final memberService = MemberService();
+  //   final token = await memberService.getAccessToken() ?? '';
+  //   debugPrint('[ReservationController] 토큰: $token');
+  //   return {
+  //     'Content-Type' : 'application/json',
+  //     'Authorization': 'Bearer $token',
+  //   };
+  // }
 
   // ── 예약 목록 조회 ────────────────────────────────────────
   // GET /api/airport/reservations/my?mid={mid}
   // MyReservationScreen 진입 시 호출
   // mid 는 SharedPreferences 에서 가져온 값 사용 (직접 하드코딩 금지)
   Future<void> fetchReservations(String mid) async {
+    _errorMessage = null;
     _isLoading = true;
     notifyListeners();
 
     debugPrint('[ReservationController] 예약 목록 조회 시작 → mid: $mid');
 
     try {
-      final url = '${ApiConstants.baseUrl}/api/airport/reservations/my?mid=$mid';
+      // final url = '${ApiConstants.baseUrl}/api/airport/reservations/my?mid=$mid';
+      final url = '/api/airport/reservations/my?mid=$mid';
       debugPrint('[ReservationController] 요청 URL: $url');
 
-      final headers  = await _getHeaders();
-      final response = await http.get(Uri.parse(url), headers: headers);
+      // final headers  = await _getHeaders();
+      // final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await dio.get(url);
       debugPrint('[ReservationController] 상태코드: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        // final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> data = response.data;
 
         // 탑승객 정보 디버그 (예약 id 별 탑승객 확인용)
         for (var item in data) {
@@ -94,14 +99,14 @@ class ReservationController with ChangeNotifier {
     debugPrint('[ReservationController] 전송 JSON: ${jsonEncode(item.toJson())}');
 
     try {
-      final url = '${ApiConstants.baseUrl}/api/airport/reservations';
+      final url = '/api/airport/reservations';
       debugPrint('[ReservationController] 요청 URL: $url');
 
-      final headers  = await _getHeaders();
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: jsonEncode(item.toJson()),
+      // final headers  = await _getHeaders();
+      final response = await dio.post(
+        url,
+        // headers: headers,
+        data: jsonEncode(item.toJson()),
       );
       debugPrint('[ReservationController] 상태코드: ${response.statusCode}');
 
@@ -114,7 +119,7 @@ class ReservationController with ChangeNotifier {
       } else if (response.statusCode == 400) {
         // 중복 예약 처리
         try {
-          final body = jsonDecode(utf8.decode(response.bodyBytes));
+          final body = response.data;
           _errorMessage = body['message'] ?? '이미 예약된 항공편입니다!';
         } catch (e) {
           _errorMessage = '이미 예약된 항공편입니다!';
@@ -146,11 +151,11 @@ class ReservationController with ChangeNotifier {
     debugPrint('[ReservationController] 예약 취소 시작 → id: ${item.id}');
 
     try {
-      final url = '${ApiConstants.baseUrl}/api/airport/reservations/${item.id}';
+      final url = '/api/airport/reservations/${item.id}';
       debugPrint('[ReservationController] 요청 URL: $url');
 
-      final headers  = await _getHeaders();
-      final response = await http.delete(Uri.parse(url), headers: headers);
+      // final headers  = await _getHeaders();
+      final response = await dio.delete(url);
       debugPrint('[ReservationController] 상태코드: ${response.statusCode}');
 
       if (response.statusCode == 200) {

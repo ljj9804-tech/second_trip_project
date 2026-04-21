@@ -2,8 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'secure_storage_helper.dart';
 
-late final Dio dio;
-late final Dio publicDio;
+late final Dio dio; // 회원
+late final Dio publicDio; // 비회원
 
 class ApiClient {
   // 싱글톤 패턴

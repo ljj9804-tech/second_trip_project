@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:second_trip_project/util/api_client.dart';
 import '../../common/constants/api_constants.dart';
 import '../model/flight_item.dart';
 
@@ -21,9 +22,9 @@ class FlightController with ChangeNotifier {
   // ── 페이지네이션 (무한스크롤) ────────────────────────────
   // 현재 스프링부트는 전체 데이터 한번에 반환 → hasMore = false 고정
   // TAGO API 페이지 방식에서 구조 유지 중 (추후 페이지 방식 전환 가능)
-  bool _isFetchingMore = false;
-  bool _hasMore        = true;
-  int  _currentPage    = 1;
+  bool _isFetchingMore = false; // 스크롤 시 추가 로딩 중인지 여부
+  bool _hasMore        = true;  // 서버에 더 가져올 데이터가 남아있는지 여부
+  int  _currentPage    = 1;     // 현재 요청할 페이지 번호
 
   bool get isFetchingMore => _isFetchingMore;
   bool get hasMore        => _hasMore;
@@ -157,18 +158,18 @@ class FlightController with ChangeNotifier {
         '출발: $_arrAirportId / 도착: $_depAirportId / 날짜: $retPlandTime');
 
     try {
-      final url = '${ApiConstants.baseUrl}/api/airport/flights'
+      final url = '/api/airport/flights'
           '?depAirportId=$_arrAirportId'
           '&arrAirportId=$_depAirportId'
           '&depPlandTime=$retPlandTime';
 
       debugPrint('[FlightController] 오는편 요청 URL: $url');
 
-      final response = await http.get(Uri.parse(url));
+      final response = await publicDio.get(url);
       debugPrint('[FlightController] 오는편 상태코드: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> data = response.data;
         _retItems.addAll(data.map((e) => FlightItem.fromJson(e)).toList());
         debugPrint('[FlightController] 오는편 조회 완료 → ${_retItems.length}건');
       } else {
@@ -186,7 +187,7 @@ class FlightController with ChangeNotifier {
   // 스프링부트 GET /api/airport/flights?depAirportId=&arrAirportId=&depPlandTime=
   // 현재 전체 데이터 한번에 반환 → _hasMore = false 고정
   Future<void> _fetchPage(int page) async {
-    final url = '${ApiConstants.baseUrl}/api/airport/flights'
+    final url = '/api/airport/flights'
         '?depAirportId=$_depAirportId'
         '&arrAirportId=$_arrAirportId'
         '&depPlandTime=$_depPlandTime';
@@ -194,11 +195,11 @@ class FlightController with ChangeNotifier {
     debugPrint('[FlightController] 요청 URL: $url (페이지: $page)');
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await publicDio.get(url);
       debugPrint('[FlightController] 상태코드: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> data = response.data;
         debugPrint('[FlightController] 응답 데이터: ${data.length}건');
         _items.addAll(data.map((e) => FlightItem.fromJson(e)).toList());
         _hasMore = false; // 스프링부트 전체 반환 방식

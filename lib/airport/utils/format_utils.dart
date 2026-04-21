@@ -96,6 +96,22 @@ class FormatUtils {
     }
     return total;
   }
+
+  // 검색결과 리스트에서 일정시간(소요시간) 짧은순
+  // 출발 시간(dep)과 도착 시간(arr) 사이의 소요 시간을 '분' 단위로 계산합니다.
+  // [dep], [arr] 형식 예시: '202604211300' (YYYYMMDDHHmm)
+  static int durationMinutes(String? dep, String? arr) {
+    // 데이터가 부실하면 0분으로 반환
+    if (dep == null || arr == null || dep.length < 12 || arr.length < 12) return 0;
+
+    // 문자열을 DateTime 객체로 변환 (예: 202604211300 -> 2026-04-21 13:00:00)
+    final d = DateTime.parse('${dep.substring(0,4)}-${dep.substring(4,6)}-${dep.substring(6,8)} ${dep.substring(8,10)}:${dep.substring(10,12)}:00');
+    final a = DateTime.parse('${arr.substring(0,4)}-${arr.substring(4,6)}-${arr.substring(6,8)} ${arr.substring(8,10)}:${arr.substring(10,12)}:00');
+
+    // 두 시간의 차이를 구한 뒤 분(minutes)으로 반환
+    return a.difference(d).inMinutes;
+  }
+
 }
 
 // =============================================================================
