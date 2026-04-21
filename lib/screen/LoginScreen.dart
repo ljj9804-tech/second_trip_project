@@ -79,12 +79,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (userData != null) {
       String realName = userData['mname'] ?? "이름 없음";
-      String realEmail = userData['mid'] ?? mid;
 
       if (!mounted) return;
 
-      // 로그인 성공 시 메인으로 가거나 마이페이지로 이동
-      Navigator.pushReplacementNamed(context, '/main');
+      // ⭐ [수정 핵심] 모든 페이지 기록을 지우고 메인으로 이동 (화살표 제거)
+      Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+
       _showSnackBar('$realName님, 환영합니다!', isError: false);
     } else {
       _showSnackBar('로그인 실패! 정보를 다시 확인해주세요.');
@@ -114,10 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Center(
                   child: Column(
                     children: [
-                      // ⭐ [수정] 팀원 로고 이미지 적용 (assets 경로 확인!)
                       Image.asset(
                         'assets/images/logo.png',
-                        height: 50, // 로고 크기 적절히 조절
+                        height: 50,
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) =>
                             Icon(CupertinoIcons.paperplane_fill, size: 80, color: yeogiRed),
@@ -132,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 50),
 
-                // 이메일 입력창
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -140,7 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // 비밀번호 입력창
                 TextField(
                   controller: passwordController,
                   obscureText: !_isPasswordVisible,
@@ -172,7 +169,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // 로그인 버튼 (여기어때 레드!)
                 SizedBox(
                   width: double.infinity,
                   height: 56,

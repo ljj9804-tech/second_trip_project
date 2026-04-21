@@ -30,7 +30,6 @@ import 'MyPostsScreen.dart';
 import 'SignUpScreen.dart';
 import 'SplashScreen.dart';
 import 'LogoutMyPageScreen.dart';
-import 'WishlistScreen.dart';
 
 //공지사항 및 검색(재현)
 
@@ -64,7 +63,6 @@ class RoutingScreen extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/logout_mypage': (context) => const LogoutMyPageScreen(),
-        '/favorite': (context) => const WishlistScreen(), // 찜 목록 경로 추가
         '/mypage': (context) => const MyPageScreen(userName: '사용자', userEmail: '', userPhone: '', userRole: '',),
         '/edit_profile': (context) => const EditProfileScreen(name: '', phone: ''),
 

@@ -5,8 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/member_service.dart';
 import 'MyBookingScreen.dart';
 import 'MyReviewScreen.dart';
-import 'WishlistScreen.dart';
-import 'EditProfileScreen.dart';
+import 'EditProfileScreen.dart'; // WishlistScreen 임포트는 삭제함
 
 class MyPageScreen extends StatefulWidget {
   final String userName;
@@ -229,28 +228,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
             const SizedBox(height: 12),
 
-            // 2. 활동 요약 섹션
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatItem('내 예약', '3', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyBookingScreen()))),
-                  _buildStatLine(),
-                  _buildStatItem('내 리뷰', '12', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyReviewScreen()))),
-                  _buildStatLine(),
-                  _buildStatItem('찜 목록', '25', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const WishlistScreen()))),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // 3. 메뉴 리스트 섹션 (일반 메뉴)
+            // ⭐ 2. 메뉴 리스트 섹션 (기존 '활동 요약' 삭제 후 통합)
             Container(
               color: Colors.white,
               child: Column(
                 children: [
+                  // 내 예약 & 내 리뷰를 메뉴 최상단으로 이동
+                  _buildMenuItem(
+                      CupertinoIcons.calendar_today,
+                      '내 예약 확인',
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyBookingScreen()))
+                  ),
+                  _buildMenuItem(
+                      CupertinoIcons.square_pencil,
+                      '내 리뷰 관리',
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyReviewScreen()))
+                  ),
+
+                  // 구분선 역할 (약간의 간격)
+                  const Divider(thickness: 8, height: 8, color: Color(0xFFF8F9FA)),
+
                   _buildMenuItem(CupertinoIcons.doc_text, '내 게시글 관리', onTap: () => Navigator.pushNamed(context, '/my_posts')),
                   _buildMenuItem(CupertinoIcons.chat_bubble_2, '1:1 문의 내역', onTap: () => Navigator.pushNamed(context, '/inquiry')),
                   _buildMenuItem(CupertinoIcons.info_circle, '고객센터', onTap: () {}),
@@ -260,7 +257,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               ),
             ),
 
-            // ⭐ [수정] 관리자 전용 메뉴 (아이콘 오타 수정)
+            // 3. 관리자 전용 메뉴
             if (_userRole == "ADMIN") ...[
               const SizedBox(height: 12),
               Container(
@@ -297,21 +294,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String count, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        children: [
-          Text(count, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: classicBlue)),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatLine() { return Container(width: 1, height: 30, color: Colors.grey[200]); }
+  // 💡 _buildStatItem과 _buildStatLine은 이제 사용하지 않으므로 삭제해도 무방해!
 
   Widget _buildMenuItem(IconData icon, String title, {bool isLast = false, Color? textColor, VoidCallback? onTap}) {
     return Column(
