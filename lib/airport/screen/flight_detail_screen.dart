@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/widget/app_base_layout.dart';
 import '../../common/widget/common_button.dart';
+import '../../services/member_service.dart';
 import '../constants/airport_constants.dart';
 import '../controller/flight_controller.dart';
 import '../model/flight_item.dart';
@@ -226,8 +227,9 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                 text: '항공권 예약',
                 onPressed: () async {
                   debugPrint('[FlightDetailScreen] 항공권 예약 버튼 클릭');
-                  final prefs = await SharedPreferences.getInstance();
-                  final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+                  // final prefs = await SharedPreferences.getInstance();
+                  // final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+                  final isLoggedIn = await MemberService().checkLoginStatus();
                   debugPrint('[FlightDetailScreen] 로그인 상태: $isLoggedIn');
 
                   if (!mounted) return;
@@ -240,11 +242,13 @@ class _FlightDetailScreenState extends State<FlightDetailScreen> {
                     await Navigator.pushNamed(context, '/login');
 
                     if (!mounted) return;
-                    final prefsAfter = await SharedPreferences.getInstance();
-                    final isLoggedInAfter = prefsAfter.getBool('isLoggedIn') ?? false;
-                    debugPrint('[FlightDetailScreen] 로그인 후 상태: $isLoggedInAfter');
+                    //
+                    // final prefsAfter = await SharedPreferences.getInstance();
+                    // final isLoggedInAfter = prefsAfter.getBool('isLoggedIn') ?? false;
+                    final isLoggedIn = await MemberService().checkLoginStatus();
+                    debugPrint('[FlightDetailScreen] 로그인 후 상태: $isLoggedIn');
 
-                    if (isLoggedInAfter) {
+                    if (isLoggedIn) {
                       // 로그인 성공 → ReservationScreen 이동
                       Navigator.push(context,
                           MaterialPageRoute(builder: (_) => const ReservationScreen()));

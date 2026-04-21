@@ -54,7 +54,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
   Future<void> _loadUserInfo() async {
     final controller = context.read<FlightController>();
     final userInfo   = await MemberService().getUserInfo();
-    debugPrint('[ReservationScreen] 예약자 정보 로드 → ${userInfo['name']}');
+    debugPrint('[ReservationScreen] 예약자 정보 로드 → ${userInfo['name']}, ${userInfo['mid']}');
 
     setState(() {
       _bookerName  = userInfo['name']  ?? '';
@@ -402,10 +402,15 @@ class _ReservationScreenState extends State<ReservationScreen> {
     if (dep == null) return;
 
     // SharedPreferences 에서 mid 조회
-    final prefs      = await SharedPreferences.getInstance();
-    final mid        = prefs.getString('userMid') ?? '';
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final token      = prefs.getString('accessToken') ?? '';
+    // final prefs      = await SharedPreferences.getInstance();
+    // final mid        = prefs.getString('userMid') ?? '';
+    // final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    // final token      = prefs.getString('accessToken') ?? '';
+    // MemberService 에서 mid 조회
+    final userInfo = await MemberService().getUserInfo();
+    final mid = userInfo['mid'] ?? '';
+    final isLoggedIn = await MemberService().checkLoginStatus();
+    final token = await MemberService().getAccessToken() ?? '';
     debugPrint('[ReservationScreen] 로그인: $isLoggedIn / mid: $mid / 토큰: $token');
 
     // ReservationItem 생성 (가는편 + 오는편 + 탑승객 통합)
@@ -431,23 +436,30 @@ class _ReservationScreenState extends State<ReservationScreen> {
       status:          '예약완료',
     );
 
-    setState(() => _isLoading = true);
-    final error = await context.read<ReservationController>().addReservation(reservation);
-    setState(() => _isLoading = false);
-
-    if (error != null) {
-      // 등록 실패 → 에러 메시지 스낵바
-      if (mounted) {
-        debugPrint('[ReservationScreen] 예약 등록 실패: $error');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-      return;
+    // setState(() => _isLoading = true);
+    // final error = await context.read<ReservationController>().addReservation(reservation);
+    // setState(() => _isLoading = false);
+    //
+    // if (error != null) {
+    //   // 등록 실패 → 에러 메시지 스낵바
+    //   if (mounted) {
+    //     debugPrint('[ReservationScreen] 예약 등록 실패: $error');
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(
+    //         content: Text(error),
+    //         backgroundColor: Colors.red,
+    //         duration: const Duration(seconds: 3),
+    //       ),
+    //     );
+    //   }
+    //   return;
+    // }
+    if (mounted) {
+      Navigator.push(context,
+        MaterialPageRoute(
+          builder: (_) => ReservationConfirmScreen(reservation: reservation),
+        ),
+      );
     }
 
     // 등록 성공 → ReservationConfirmScreen 이동

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/member_service.dart';
 import '../constants/airport_constants.dart';
 import '../../common/constants/app_colors.dart';
 import '../../common/widget/app_base_layout.dart';
 import '../../common/widget/common_button.dart';
+import '../controller/reservation_controller.dart';
 import '../model/reservation_item.dart';
 import '../utils/format_utils.dart';
+import 'package:provider/provider.dart';
+import '../controller/reservation_controller.dart';
 
 // StatefulWidget: initState 에서 SharedPreferences 비동기 로드 필요
 class ReservationConfirmScreen extends StatefulWidget {
@@ -38,10 +43,15 @@ class _ReservationConfirmScreenState extends State<ReservationConfirmScreen> {
   // ── 예약자 이메일/전화번호 로드 ───────────────────────────
   // SharedPreferences 에 저장된 userEmail, userPhone 조회
   Future<void> _loadUserInfo() async {
-    final prefs = await SharedPreferences.getInstance();
+    // final prefs = await SharedPreferences.getInstance();
+    // setState(() {
+    //   _email = prefs.getString('userEmail') ?? '-';
+    //   _phone = prefs.getString('userPhone') ?? '-';
+    // });
+    final userInfo = await MemberService().getUserInfo();
     setState(() {
-      _email = prefs.getString('userEmail') ?? '-';
-      _phone = prefs.getString('userPhone') ?? '-';
+      _email = userInfo['email'] ?? '-';
+      _phone = userInfo['phone'] ?? '-';
     });
     debugPrint('[ReservationConfirmScreen] 예약자 이메일: $_email / 전화번호: $_phone');
   }
@@ -219,7 +229,17 @@ class _ReservationConfirmScreenState extends State<ReservationConfirmScreen> {
                   flex: 2,
                   child: CommonButton(
                     text: '최종예약',
-                    onPressed: () {
+                    // onPressed: () {
+                    onPressed: () async {
+                      final error = await context.read<ReservationController>()
+                          .addReservation(widget.reservation);
+
+                      if (error != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error), backgroundColor: Colors.red),
+                        );
+                        return;
+                      }
                       debugPrint('[ReservationConfirmScreen] 최종예약 클릭 → '
                           '총금액: ${widget.reservation.totalPrice}원');
                       showDialog(

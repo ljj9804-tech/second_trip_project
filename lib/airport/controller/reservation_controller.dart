@@ -38,6 +38,7 @@ class ReservationController with ChangeNotifier {
   // MyReservationScreen 진입 시 호출
   // mid 는 SharedPreferences 에서 가져온 값 사용 (직접 하드코딩 금지)
   Future<void> fetchReservations(String mid) async {
+    _errorMessage = null;
     _isLoading = true;
     notifyListeners();
 
