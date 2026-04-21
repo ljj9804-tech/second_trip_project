@@ -6,12 +6,12 @@
   import '../../common/widget/common_button.dart';
   import '../../car/controller/car_reservation_controller.dart';
   import '../../car/model/car_rental_reservation_dto.dart';
-  import '../../car/util/format_util.dart';
   import '../../util/secure_storage_helper.dart';
   import '../controller/reservation_controller.dart';
   import '../model/reservation_item.dart';
   import '../utils/format_utils.dart';
   import '../../util/api_client.dart';
+import '../../car/util/car_format_util.dart';
 
 // ✅ package 추가
 enum BookingType { flight, rental, hotel, package }

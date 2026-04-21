@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../services/member_service.dart';
 import 'MyPageScreen.dart';
+import 'RoutingScreen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -10,7 +11,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with RouteAware {
   late PageController _pageController;
   Timer? _timer;
   int _currentPage = 0;
@@ -31,6 +32,17 @@ class _MainScreenState extends State<MainScreen> {
     'assets/images/main_thumbnail3.png',
     'assets/images/main_thumbnail1.png',
   ];
+
+  @override
+  void didChangeDependencies() {    //위젯이 처음 빌드 될때
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!); //이 화면에 감시자를 붙임, subscribe는 didChangeDependencies에서 사용해야 함
+  }
+
+  @override
+  void didPopNext() {
+    _checkLoginStatus();
+  }
 
   @override
   void initState() {
@@ -68,6 +80,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _timer?.cancel();
     _pageController.dispose();
     super.dispose();

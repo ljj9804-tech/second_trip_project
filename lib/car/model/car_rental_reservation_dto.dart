@@ -1,4 +1,4 @@
-import '../util/format_util.dart';
+import '../util/car_format_util.dart';
 
 class CarRentalReservationDTO {
   final int id;

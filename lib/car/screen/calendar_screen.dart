@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart'; // TableCalendar 위젯
 
 import '../controller/calendar_controller.dart'; // range 선택 상태 관리 컨트롤러
-import '../util/format_util.dart';
+import '../util/car_format_util.dart';
 
 /// 달력 화면
 /// 구조: 요일 헤더(고정) → 구분선 → 달력 리스트(스크롤) → 하단 패널(고정)

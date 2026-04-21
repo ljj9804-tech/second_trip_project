@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../controller/calendar_controller.dart';
 import '../controller/car_rent_home_controller.dart';
-import '../util/format_util.dart';
+import '../util/car_format_util.dart';
 import '../controller/car_rent_list_controller.dart';
 import 'car_list_screen.dart';
 import 'calendar_screen.dart';

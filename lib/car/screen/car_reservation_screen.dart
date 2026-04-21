@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../util/format_util.dart';
+import '../util/car_format_util.dart';
 import '../controller/car_reservation_controller.dart';
 import '../model/company_car_dto.dart';
 import '../model/car_search_cursor_response.dart';
@@ -159,9 +159,29 @@ class CarReservationScreen extends StatelessWidget {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('예약이 완료되었습니다.')),
                               );
-                              Navigator.pushReplacementNamed(context, "/main");
+                              Navigator.popUntil(context, (route) => route.isFirst);
                             } else if (rentalController.errorMessage == '로그인이 필요합니다.') {
-                              Navigator.pushNamed(context, '/login');
+                              final loggedIn = await Navigator.pushNamed(context, '/login', arguments: 'returnToPage');
+                              if (!context.mounted) return;
+                              if (loggedIn == true) {
+                                final retryResult = await rentalController.createRental(
+                                  companyCarDTO.carId,
+                                  _toApiDate(startDate, startTime),
+                                  _toApiDate(endDate, endTime),
+                                );
+                                if (!context.mounted) return;
+                                if (retryResult != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('예약이 완료되었습니다.')),
+                                  );
+
+                                  Navigator.popUntil(context, (route) => route.isFirst);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(rentalController.errorMessage ?? '예약 실패')),
+                                  );
+                                }
+                              }
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(rentalController.errorMessage ?? '예약 실패')),

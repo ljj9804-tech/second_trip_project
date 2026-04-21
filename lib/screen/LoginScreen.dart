@@ -83,7 +83,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       // ⭐ [수정 핵심] 모든 페이지 기록을 지우고 메인으로 이동 (화살표 제거)
-      Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+      final type = ModalRoute.of(context)?.settings.arguments as String?;
+      if (type == null) {
+        Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+      } else {
+        Navigator.pop(context, true);
+      }
 
       _showSnackBar('$realName님, 환영합니다!', isError: false);
     } else {

@@ -6,7 +6,7 @@ import 'package:second_trip_project/car/model/company_car_dto.dart';
 import 'package:second_trip_project/car/model/car_search_cursor_response.dart';
 
 import '../controller/car_rent_list_controller.dart';
-import '../util/format_util.dart';
+import '../util/car_format_util.dart';
 import 'car_reservation_screen.dart';
 
 class CarListScreen extends StatefulWidget {

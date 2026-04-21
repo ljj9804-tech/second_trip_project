@@ -42,6 +42,8 @@ import 'package:second_trip_project/screen/NoticeDetailScreen.dart';
 import 'package:second_trip_project/screen/NoticeListScreen.dart';
 
 
+final RouteObserver<ModalRoute> routeObserver = RouteObserver<ModalRoute>();
+
 class RoutingScreen extends StatelessWidget {
   const RoutingScreen({super.key});
 
@@ -55,6 +57,7 @@ class RoutingScreen extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
       ),
+      navigatorObservers: [routeObserver],
       initialRoute: '/',
       routes: {
         // [공통 및 유저]
