@@ -516,6 +516,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ],
               ),
+              // 메모리(변수) 상에 임시로 저장
               ...(_recentSearches.map((r) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.history, color: AppColors.textSecondary),
