@@ -263,16 +263,20 @@ class _CarCardState extends State<_CarCard> with AutomaticKeepAliveClientMixin {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(car.carName,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text(
-                      '${car.type} · ${car.seats}인승 · ${car.fuel}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(car.carName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        '${car.type} · ${car.seats}인승 · ${car.fuel}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -366,8 +370,12 @@ class _CompanyPriceTile extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('${companyCarDTO.companyName} · ${companyCarDTO.year}년',
-                style: const TextStyle(fontSize: 14)),
+            Expanded(
+              child: Text(
+                '${companyCarDTO.companyName} · ${companyCarDTO.year}년',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
             Text(
               '${formatPrice(companyCarDTO.dailyPrice)}원/일',
               style: TextStyle(
