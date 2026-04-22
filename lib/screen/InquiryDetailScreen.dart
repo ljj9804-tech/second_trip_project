@@ -106,6 +106,7 @@ class InquiryDetailScreen extends StatelessWidget {
 
 
 
+
       ),
     );
   }
