@@ -21,11 +21,7 @@ class _WriteInquiryScreenState extends State<WriteInquiryScreen> {
     return await _storage.getAccessToken();
   }
 
-  String _selectedCategory = '기타';
-  final List<String> _categories = ['예약/결제', '취소/환불', '이용문의', '기타'];
-
   Future<void> _submitInquiry() async {
-    // 1. 토큰 읽기 및 로그 확인
     String? token = await _getToken();
     debugPrint("### 서버로 전송할 토큰 확인: $token");
 
@@ -44,14 +40,13 @@ class _WriteInquiryScreenState extends State<WriteInquiryScreen> {
         url,
         headers: {
           "Content-Type": "application/json; charset=UTF-8",
-          // 토큰이 올바르게 들어가는지 확인 (Bearer와 토큰 사이 공백 필수)
           "Authorization": "Bearer $token",
         },
         body: jsonEncode({
           "title": _titleController.text.trim(),
           "content": _contentController.text.trim(),
           "mid": "asd@naver.com",
-          "category": _selectedCategory
+          // category 필드 제거됨
         }),
       );
 
@@ -64,7 +59,6 @@ class _WriteInquiryScreenState extends State<WriteInquiryScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('문의가 등록되었습니다.')));
         Navigator.pop(context, true);
       } else {
-        // 에러 발생 시 서버 응답 메시지를 상세히 보여줌
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('저장 실패(${response.statusCode}): ${response.body}')),
         );
@@ -104,10 +98,6 @@ class _WriteInquiryScreenState extends State<WriteInquiryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('문의 유형', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 10),
-            _buildDropdown(),
-            const SizedBox(height: 24),
             const Text('제목', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 10),
             _buildTextField(_titleController, '제목을 입력해주세요'),
@@ -116,21 +106,6 @@ class _WriteInquiryScreenState extends State<WriteInquiryScreen> {
             const SizedBox(height: 10),
             _buildTextField(_contentController, '문의 내용을 상세히 입력해주세요', maxLines: 10),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(border: Border.all(color: Colors.grey[300]!), borderRadius: BorderRadius.circular(8)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCategory,
-          isExpanded: true,
-          items: _categories.map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
-          onChanged: (val) => setState(() => _selectedCategory = val!),
         ),
       ),
     );
