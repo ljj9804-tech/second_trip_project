@@ -83,7 +83,7 @@ class _PackageListScreenState extends State<PackageListScreen> {
           },
           cursorColor: _brandColor,
           decoration: InputDecoration(
-            hintText: "국가, 도시명을 입력하세요",
+            hintText: "도시명을 입력하세요",
             hintStyle: TextStyle(color: Colors.grey[600]),
 
             prefixIcon: Icon(Icons.search, color: _brandColor),
