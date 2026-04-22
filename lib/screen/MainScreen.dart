@@ -241,7 +241,6 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         children: [
           const Text("추천 서비스", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 15),
-          _buildMenuButton(context, Icons.near_me, '지금 여기 (주변검색)', '/nearby'),
           _buildMenuButton(context, Icons.forum, '커뮤니티 (게시판)', '/community'),
         ],
       ),
@@ -312,7 +311,6 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: "홈"),
         BottomNavigationBarItem(icon: Icon(Icons.search), label: "검색"),
-        BottomNavigationBarItem(icon: Icon(Icons.location_on), label: "내 주변"),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: "내 정보"),
       ],
     );
