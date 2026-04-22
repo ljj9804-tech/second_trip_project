@@ -8,13 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 // 라우팅 설정 파일 import
 import 'package:second_trip_project/screen/RoutingScreen.dart';
 
-import 'package:second_trip_project/car/controller/calendar_controller.dart';
-import 'package:second_trip_project/car/controller/car_reservation_controller.dart';
-
 // 숙소 파트 import
 import 'package:second_trip_project/providers/accommodation_providers.dart';
 import 'airport/controller/flight_controller.dart';
 import 'airport/controller/reservation_controller.dart';
+import 'car/controller/car_reservation_controller.dart';
 
 class PackageController extends ChangeNotifier {}
 
@@ -37,13 +35,12 @@ Future<void> main() async {
         providers: [
           ChangeNotifierProvider<PackageController>(
               create: (_) => PackageController()),
-          ChangeNotifierProvider<CalendarController>(
-              create: (_) => CalendarController()),
-          ChangeNotifierProvider<CarReservationController>(create: (_) => CarReservationController()),
           ChangeNotifierProvider<FlightController>(
               create: (_) => FlightController()),
           ChangeNotifierProvider<ReservationController>(
               create: (_) => ReservationController()),
+          ChangeNotifierProvider<CarReservationController>(
+              create: (_) => CarReservationController()),
         ],
         child: const RoutingScreen(),
       ),

@@ -42,7 +42,7 @@ class CarRentListController with ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(const Duration(seconds: 2));
       final result = await _service.searchCars(
         CarSearchCursorRequestDTO(region: region, startDate: startDate, endDate: endDate, size: pageSize),
       );
@@ -66,7 +66,7 @@ class CarRentListController with ChangeNotifier {
     notifyListeners();
 
     try {
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(const Duration(seconds: 2));
       final result = await _service.searchCars(
         CarSearchCursorRequestDTO(
           region: _selectedRegion!,
@@ -100,7 +100,7 @@ class CarRentListController with ChangeNotifier {
     final nextPage = (_optionPages[carIndex] ?? 0) + 1; //페이지를 하나씩 늘리며 페이지네이션 함
 
     try {
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(const Duration(seconds: 2));
       final result = await _service.fetchCarOptions(
         CompanyCarPageRequestDTO(
           carName: car.carName,
