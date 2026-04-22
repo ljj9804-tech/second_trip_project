@@ -281,8 +281,6 @@ class _MainScreenState extends State<MainScreen> with RouteAware {
         if (index == 1) {
           Navigator.pushNamed(context, '/search');
         } else if (index == 2) {
-          Navigator.pushNamed(context, '/nearby');
-        } else if (index == 3) {
           final bool status = await _memberService.checkLoginStatus();
 
           if (status) {
