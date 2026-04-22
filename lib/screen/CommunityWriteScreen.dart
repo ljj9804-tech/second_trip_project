@@ -116,5 +116,6 @@ class _CommunityWriteScreenState extends State<CommunityWriteScreen> {
         ),
       ),
     );
+
   }
 }
