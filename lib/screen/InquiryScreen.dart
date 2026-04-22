@@ -132,7 +132,6 @@ class _InquiryScreenState extends State<InquiryScreen> {
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8.0),
-
           child: Text(item['regDate'].toString().substring(0, 10), style: TextStyle(color: Colors.grey[400], fontSize: 12)),
         ),
         trailing: const Icon(CupertinoIcons.chevron_forward, size: 16, color: Colors.grey),
