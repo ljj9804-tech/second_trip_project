@@ -8,7 +8,9 @@ late final Dio publicDio; // 비회원
 class ApiClient {
   // 싱글톤 패턴
   static final ApiClient _instance = ApiClient._internal();
+
   factory ApiClient() => _instance;
+
   ApiClient._internal();
 
   final _storage = SecureStorageHelper();
@@ -34,26 +36,28 @@ class ApiClient {
     dio = Dio(baseOptions);
 
     // 요청 인터셉터 → 모든 요청에 자동으로 토큰 추가
-    dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.getAccessToken();
-        print('===== API 호출 토큰: $token ====='); // 로그 추가
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        print('===== 헤더: ${options.headers} ====='); // 로그 추가
-        return handler.next(options);
-      },
-      // 응답 에러 처리
-      onError: (error, handler) async {
-        // 토큰 만료 (401) 시 로그아웃
-        if (error.response?.statusCode == 401) {
-          await _storage.logout();
-          print('토큰 만료 → 로그아웃 처리');
-        }
-        return handler.next(error);
-      },
-    ));
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _storage.getAccessToken();
+          print('===== API 호출 토큰: $token ====='); // 로그 추가
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          print('===== 헤더: ${options.headers} ====='); // 로그 추가
+          return handler.next(options);
+        },
+        // 응답 에러 처리
+        onError: (error, handler) async {
+          // 토큰 만료 (401) 시 로그아웃
+          if (error.response?.statusCode == 401) {
+            await _storage.logout();
+            print('토큰 만료 → 로그아웃 처리');
+          }
+          return handler.next(error);
+        },
+      ),
+    );
   }
 
   // ─── 찜 추가 ──────────────────────────────────────
@@ -105,8 +109,7 @@ class ApiClient {
   // ─── 찜 여부 확인 ─────────────────────────────────
   Future<bool> checkFavorite(String contentId) async {
     try {
-      final response =
-      await dio.get('/api/favorites/check/$contentId');
+      final response = await dio.get('/api/favorites/check/$contentId');
       return response.data as bool;
     } on DioException catch (e) {
       print('찜 여부 확인 에러: ${e.message}');
@@ -160,6 +163,40 @@ class ApiClient {
     }
   }
 
+  // ─── 패키지 상품 목록 조회 (페이징/카테고리) ──────────────────
+  Future<List<dynamic>> getPackageList({
+    required String category,
+    required int page,
+    required int size,
+  }) async {
+    try {
+      final response = await dio.get(
+        '/api/packages/packages_list',
+        queryParameters: {'category': category, 'page': page, 'size': size},
+      );
+
+      // Spring Boot Page 객체에서 content 리스트만 추출
+      if (response.data != null && response.data['content'] != null) {
+        return response.data['content'];
+      }
+      return [];
+    } on DioException catch (e) {
+      print('패키지 목록 조회 에러: ${e.message}');
+      return [];
+    }
+  }
+
+  // ─── 패키지 상품 상세 조회 ──────────────────────────────
+  Future<Map<String, dynamic>?> getPackageDetail(int id) async {
+    try {
+      final response = await dio.get('/api/packages/$id');
+      return response.data;
+    } on DioException catch (e) {
+      print('패키지 상세 조회 에러: ${e.message}');
+      return null;
+    }
+  }
+
   // ─── 내 패키지 예약 목록 조회 ─────────────────────────
   Future<List<dynamic>> getMyPackageReservations() async {
     try {
@@ -201,10 +238,7 @@ class ApiClient {
     try {
       final response = await dio.get(
         '/api/reservations/booked-dates',
-        queryParameters: {
-          'contentId': contentId,
-          'roomCode': roomCode,
-        },
+        queryParameters: {'contentId': contentId, 'roomCode': roomCode},
       );
       return List<String>.from(response.data);
     } on DioException catch (e) {
