@@ -22,7 +22,11 @@ class PackageItemService {
           'size': size,
         },
       );
-      print('=============API 요청중=============');
+      print('🚀 [API 요청] 카테고리: $category | 페이지: $page');
+      //현재 카테고리별로 서버 요청을 보냄
+      //카테고리 수가 늘어나면 서버에 부하 가능성이 생기므로
+      //모든 카테고리의 첫 페이지 데이터를 한 번에 묶어서 주는API를 만들어
+      //호출 횟수를 1버으로 줄이는 방법 고려해보기
 
       // 데이터가 아예 없을 경우 빈 리스트 반환
       if (response.data != null && response.data['content'] != null) {
